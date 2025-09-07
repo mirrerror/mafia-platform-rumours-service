@@ -11,8 +11,6 @@ Provides an information marketplace. Players can spend currency to buy pieces of
 
 All request and response bodies are in **JSON** format.
 
-## Rumors Service
-
 ### POST `/purchase`
 
 A player buys a random rumor.
