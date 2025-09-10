@@ -11,17 +11,59 @@ Provides an information marketplace. Players can spend currency to buy pieces of
 
 All request and response bodies are in **JSON** format.
 
-### POST `/purchase`
+### Buy a rumour
 
-A player buys a random rumor.
+**Endpoint:** `POST /api/purchase-rumour`
+
+**Description:** Buys a random rumour in the specified lobby.
+
+**Headers:**
+- `Authorization: Bearer <token>`
+
 **Request Body:**
-
 ```json
-{ "userId": "uuid", "lobbyId": "uuid" }
+{
+  "lobbyId": "lobby_id",
+  "rumourType": "player_role",
+  "targetPlayerId": "player_id"
+}
 ```
 
-**Response (200 OK):**
-
+**Success Response (200):**
 ```json
-{ "rumorId": "uuid", "text": "string" }
+{
+  "rumour": "Player X was seen near the victim's house last night"
+}
+```
+
+**Error Responses:**
+
+**400 Bad Request**
+  ```json
+  {
+    "error": {
+      "code": "INSUFFICIENT_FUNDS",
+      "message": "Not enough currency to purchase rumour"
+    }
+  }
+  ```
+
+**404 Not Found**
+  ```json
+  {
+    "error": {
+      "code": "NO_RUMOURS_AVAILABLE",
+      "message": "No rumours available for this target"
+    }
+  }
+  ```
+
+**404 Not Found**
+```json
+{
+  "error": {
+    "code": "LOBBY_NOT_FOUND",
+    "message": "Lobby does not exist"
+  }
+}
 ```
