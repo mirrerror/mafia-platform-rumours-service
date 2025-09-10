@@ -25,7 +25,7 @@ All request and response bodies are in **JSON** format.
 {
   "lobbyId": "lobby_id",
   "rumourType": "player_role",
-  "targetPlayerId": "player_id"
+  "targetPlayerId": 12
 }
 ```
 
