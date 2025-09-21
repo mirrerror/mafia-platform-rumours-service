@@ -111,7 +111,7 @@ DB_CONNECTION_STRING="Host=localhost;Database=mafia_rumours_service;..."
 
 You can also pull the pre-built Docker image of the service from Docker Hub.
 
-**Docker Hub Repository:** `m1rrerror/mafia-communication-service`
+**Docker Hub Repository:** `m1rrerror/mafia-rumours-service`
 **Latest Tag:** `v1.0.0`
 
 #### Pull and Run
