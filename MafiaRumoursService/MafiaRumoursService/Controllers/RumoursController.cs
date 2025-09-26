@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
 using System.Text.Json;
+using DotNetEnv;
 using MafiaRumoursService.Services;
 
 namespace MafiaRumoursService.Controllers;
@@ -16,7 +17,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
     [HttpPost("{lobbyId}/purchase")]
     public async Task<IActionResult> PurchaseRumour(string lobbyId, [FromBody] PurchaseRumourDto purchaseRumourDto)
     {
-        var currencyServiceUrl = Environment.GetEnvironmentVariable("CURRENCY_SERVICE_URL") ?? "http://localhost:8000";
+        var currencyServiceUrl = Env.GetString("CURRENCY_SERVICE_URL") ?? "http://localhost:8000";
         var httpClient = httpClientFactory.CreateClient();
 
         var currencyRequestPayload = new

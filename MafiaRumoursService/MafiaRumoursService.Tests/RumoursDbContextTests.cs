@@ -29,6 +29,7 @@ public class RumoursDbContextTests
         
         var rumour = new Rumour
         {
+            Id = 1,
             LobbyId = "test-lobby",
             Type = "role",
             OwnerId = 1,
