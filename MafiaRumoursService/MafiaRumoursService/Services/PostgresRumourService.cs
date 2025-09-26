@@ -1,5 +1,6 @@
 ﻿using DotNetEnv;
 using MafiaRumoursService.Data;
+using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,7 +41,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
             {
                 case "activity":
                     if (string.IsNullOrEmpty(taskServiceUrl)) return null;
-                    
+
                     var taskResponse = await httpClient.GetAsync($"{taskServiceUrl}/player/{targetId}/tasks?gameId=latest");
                     if (!taskResponse.IsSuccessStatusCode) return null;
 
@@ -49,10 +50,10 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
                 case "appearance":
                     if (string.IsNullOrEmpty(characterServiceUrl)) return null;
-                    
+
                     var appearanceResponse = await httpClient.GetAsync($"{characterServiceUrl}/{targetId}/appearance");
                     if (!appearanceResponse.IsSuccessStatusCode) return null;
-                    
+
                     var appearanceApiResponse = await appearanceResponse.Content.ReadFromJsonAsync<ApiResponse<AppearanceDataDto>>();
                     return appearanceApiResponse?.Data?.Assets;
 
@@ -66,7 +67,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
             return null;
         }
     }
-    
+
     public async Task<IEnumerable<Rumour>> GetRumoursByOwnerAsync(string lobbyId, long ownerId)
     {
         return await dbContext.Rumours
@@ -77,28 +78,35 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
     private string GenerateRumourText(string rumourType, long targetId, object? externalData)
     {
-        return rumourType.ToLower() switch
+        switch (rumourType.ToLower())
         {
-            "activity" when externalData is List<TaskDto> tasks && tasks.Count != 0 =>
-                GenerateActivityRumour(targetId, tasks),
-                
-            "appearance" when externalData is Dictionary<string, object> assets && assets.Count != 0 =>
-                GenerateAppearanceRumour(targetId, assets),
-            
-            _ => $"There are no rumours about {targetId}."
-        };
+            case "activity":
+                if (externalData is List<TaskDto> tasks && tasks.Count != 0)
+                {
+                    return GenerateActivityRumour(targetId, tasks);
+                }
+                return $"I heard player {targetId} is up to something, but I don't have the details.";
+            case "appearance":
+                if (externalData is Dictionary<string, object> assets && assets.Count != 0)
+                {
+                    return GenerateAppearanceRumour(targetId, assets);
+                }
+                return $"Player {targetId} is trying to blend in, but their disguise is impeccable.";
+            default:
+                throw new RumourTypeNotFoundException("Rumours type not found");
+        }
     }
 
     private string GenerateActivityRumour(long targetId, List<TaskDto> tasks)
     {
         var task = tasks[Random.Next(tasks.Count)];
-        
+
         string[] templates = [
             $"Someone saw player {targetId} at the {task.Location}, pretending to '{task.Name}'. What were they really doing?",
             $"Word on the street is player {targetId} was very busy with '{task.Description}' at the {task.Location}.",
             $"I wouldn't trust player {targetId}. They were lurking around the {task.Location} all day."
         ];
-        
+
         return templates[Random.Next(templates.Length)];
     }
 
@@ -112,7 +120,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
             $"Player {targetId}'s choice of {assetName} for their {slot} is... interesting. Makes you wonder.",
             $"I'm not saying anything, but player {targetId}'s {slot} looks just like the one the culprit was described wearing."
         ];
-        
+
         return templates[Random.Next(templates.Length)];
     }
 }
