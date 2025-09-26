@@ -1,4 +1,5 @@
-﻿using MafiaRumoursService.Models;
+using MafiaRumoursService.Exceptions;
+using MafiaRumoursService.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
 using System.Text.Json;
@@ -26,7 +27,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
             amount = RumourCost,
             operation = "subtract"
         };
-        
+
         var jsonPayload = JsonSerializer.Serialize(currencyRequestPayload);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
@@ -50,16 +51,30 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
             return StatusCode(503, $"Currency service is unavailable: {ex.Message}");
         }
 
-        var rumour = await rumourService.CreateRumourAsync(
-            lobbyId, 
-            purchaseRumourDto.SenderId, 
-            purchaseRumourDto.TargetId,
-            purchaseRumourDto.RumourType
-        );
-        
-        return Ok(rumour);
+        try
+        {
+            var rumour = await rumourService.CreateRumourAsync(
+                lobbyId,
+                purchaseRumourDto.SenderId,
+                purchaseRumourDto.TargetId,
+                purchaseRumourDto.RumourType
+            );
+
+            return Ok(rumour);
+        }
+        catch (RumourTypeNotFoundException e)
+        {
+            return NotFound(new
+            {
+                error = new
+                {
+                    code = "BAD_RUMOURS_TYPE",
+                    message = e.Message
+                }
+            });
+        }
     }
-    
+
     [HttpGet("{lobbyId}/user/{ownerId:long}")]
     public async Task<IActionResult> GetUserRumours(string lobbyId, long ownerId)
     {

@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using MafiaRumoursService.Data;
+using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using MafiaRumoursService.Services;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ public class PostgresRumourServiceTests
     private readonly DbContextOptions<RumoursDbContext> _dbContextOptions = new DbContextOptionsBuilder<RumoursDbContext>()
         .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
         .Options;
-    
+
     private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock = new();
     private readonly HttpClient _httpClient;
 
@@ -25,7 +26,7 @@ public class PostgresRumourServiceTests
     }
 
     [Fact]
-    public async Task CreateRumourAsync_ShouldCreateAndReturnRumour()
+    public async Task CreateRumourAsync_ShouldThrowExceptionForUnknownType()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
         var service = new PostgresRumourService(context, _httpClient);
@@ -33,19 +34,8 @@ public class PostgresRumourServiceTests
         const long ownerId = 1;
         const long targetId = 2;
         const string rumourType = "role";
-        
-        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
-        Assert.NotNull(result);
-        Assert.Equal(lobbyId, result.LobbyId);
-        Assert.Equal(ownerId, result.OwnerId);
-        Assert.Equal(targetId, result.TargetId);
-        Assert.Equal(rumourType, result.Type);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
 
-        var rumourInDb = await context.Rumours.FindAsync(result.Id);
-        Assert.NotNull(rumourInDb);
-        Assert.Equal(result.Id, rumourInDb.Id);
+        await Assert.ThrowsAsync<RumourTypeNotFoundException>(() => service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType));
     }
 
     [Fact]
@@ -65,14 +55,14 @@ public class PostgresRumourServiceTests
 
         await context.Rumours.AddRangeAsync(rumours);
         await context.SaveChangesAsync();
-        
+
         var result = (await service.GetRumoursByOwnerAsync(lobbyId, ownerId)).ToList();
-        
+
         Assert.Equal(2, result.Count);
         Assert.All(result, r => Assert.Equal(ownerId, r.OwnerId));
         Assert.True(result[0].CreatedAt > result[1].CreatedAt);
     }
-    
+
     [Fact]
     public async Task GetRumoursByOwnerAsync_WhenNoRumoursExist_ShouldReturnEmptyList()
     {
@@ -109,9 +99,9 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.OK,
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        
+
         Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
@@ -121,7 +111,7 @@ public class PostgresRumourServiceTests
         Assert.NotNull(result);
         Assert.Contains($"player {targetId}", result.Text, StringComparison.OrdinalIgnoreCase);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithFailedActivityApiCall_ShouldGenerateDefaultRumour()
     {
@@ -135,9 +125,9 @@ public class PostgresRumourServiceTests
         var httpResponse = new HttpResponseMessage {
             StatusCode = HttpStatusCode.InternalServerError
         };
-        
+
         Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
@@ -145,9 +135,9 @@ public class PostgresRumourServiceTests
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
 
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithSuccessfulAppearanceApiCall_ShouldGenerateAppearanceRumour()
     {
@@ -173,19 +163,19 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.OK,
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        
+
         Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
         Assert.Contains($"player {targetId}", result.Text, StringComparison.OrdinalIgnoreCase);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithFailedAppearanceApiCall_ShouldGenerateDefaultRumour()
     {
@@ -199,19 +189,19 @@ public class PostgresRumourServiceTests
         var httpResponse = new HttpResponseMessage {
             StatusCode = HttpStatusCode.InternalServerError
         };
-        
+
         Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithNoEnvVar_ShouldGenerateDefaultRumour()
     {
@@ -223,11 +213,11 @@ public class PostgresRumourServiceTests
         const string rumourType = "activity";
 
         Environment.SetEnvironmentVariable("TASK_SERVICE_URL", null);
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
     }
 
     [Fact]
@@ -241,17 +231,17 @@ public class PostgresRumourServiceTests
         const string rumourType = "activity";
 
         Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Network error"));
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithEmptyTasks_ShouldGenerateDefaultRumour()
     {
@@ -271,9 +261,9 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.OK,
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        
+
         Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
@@ -281,9 +271,9 @@ public class PostgresRumourServiceTests
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
 
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
     }
-    
+
     [Fact]
     public async Task CreateRumourAsync_WithEmptyAssets_ShouldGenerateDefaultRumour()
     {
@@ -303,21 +293,21 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.OK,
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        
+
         Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(httpResponse);
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
     }
-    
+
     [Fact]
-    public async Task CreateRumourAsync_WithUnknownType_ShouldGenerateDefaultRumour()
+    public async Task CreateRumourAsync_WithUnknownType_ShouldThrowRumourTypeNotFoundException()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
         var service = new PostgresRumourService(context, _httpClient);
@@ -326,10 +316,7 @@ public class PostgresRumourServiceTests
         const long targetId = 2;
         const string rumourType = "unknown-type"; // An unsupported type
 
-        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
-        Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        await Assert.ThrowsAsync<RumourTypeNotFoundException>(() => service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType));
     }
 
     [Fact]
@@ -343,11 +330,11 @@ public class PostgresRumourServiceTests
         const string rumourType = "appearance";
 
         Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", null);
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
     }
 
     [Fact]
@@ -361,14 +348,14 @@ public class PostgresRumourServiceTests
         const string rumourType = "appearance";
 
         Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
-        
+
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Network error"));
-        
+
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
-        
+
         Assert.NotNull(result);
-        Assert.Equal($"There are no rumours about {targetId}.", result.Text);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
     }
 }
