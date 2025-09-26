@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MafiaRumoursService", "MafiaRumoursService\MafiaRumoursService.csproj", "{6E96CECC-AF33-4B2A-AC11-4BB89EFC692E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{89473B24-50E3-412E-BBEF-159355ED6DBE}"
+	ProjectSection(SolutionItems) = preProject
+		compose.yaml = compose.yaml
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MafiaRumoursService.Tests", "MafiaRumoursService.Tests\MafiaRumoursService.Tests.csproj", "{D1290D44-42E3-4D1D-A39E-F0281A42B546}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E96CECC-AF33-4B2A-AC11-4BB89EFC692E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E96CECC-AF33-4B2A-AC11-4BB89EFC692E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E96CECC-AF33-4B2A-AC11-4BB89EFC692E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E96CECC-AF33-4B2A-AC11-4BB89EFC692E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1290D44-42E3-4D1D-A39E-F0281A42B546}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1290D44-42E3-4D1D-A39E-F0281A42B546}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1290D44-42E3-4D1D-A39E-F0281A42B546}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1290D44-42E3-4D1D-A39E-F0281A42B546}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

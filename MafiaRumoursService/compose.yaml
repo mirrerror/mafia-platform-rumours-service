@@ -1,0 +1,53 @@
+﻿# ===================================================================
+# Docker Compose file for the Mafia Rumours Service
+# -------------------------------------------------------------------
+# This file defines and orchestrates the application service and its
+# PostgreSQL database dependency.
+#
+# To run: docker-compose up --build
+# To stop: docker-compose down
+# ===================================================================
+
+services:
+  # The .NET Application Service
+  mafiarumoursservice:
+    image: mafiarumoursservice
+    build:
+      context: .
+      dockerfile: MafiaRumoursService/Dockerfile
+    container_name: mafia-rumours-service-app
+    ports:
+      - "8080:8080" # Expose the app's main port
+    env_file:
+      - .env # Load environment variables from the .env file
+    depends_on:
+      db:
+        condition: service_healthy # Wait for the DB to be ready
+    networks:
+      - mafia-rumours-service-net
+
+  # The PostgreSQL Database Service
+  db:
+    image: postgres:16
+    container_name: mafia-rumours-service-db
+    env_file:
+      - .env # Load database credentials from the .env file
+    volumes:
+      - postgres_rumours_data:/var/lib/postgresql/data # Persist database data
+    networks:
+      - mafia-rumours-service-net
+    # Health Check to ensure the database server is ready before the app starts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# Define the network for services to communicate on
+networks:
+  mafia-rumours-service-net:
+    driver: bridge
+
+# Define the volume for persistent database storage
+volumes:
+  postgres_rumours_data:
