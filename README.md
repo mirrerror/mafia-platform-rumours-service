@@ -112,16 +112,16 @@ DB_CONNECTION_STRING="Host=localhost;Database=mafia_rumours_service;..."
 You can also pull the pre-built Docker image of the service from Docker Hub.
 
 **Docker Hub Repository:** `m1rrerror/mafia-rumours-service`
-**Latest Tag:** `v1.2.0`
+**Latest Tag:** `v1.3.0`
 
 #### Pull and Run
 
 ```bash
 # Pull the image
-docker pull m1rrerror/mafia-rumours-service:v1.2.0
+docker pull m1rrerror/mafia-rumours-service:v1.3.0
 
 # Run the container
-docker run -d -p 8080:80 --name mafia-rumours-service m1rrerror/mafia-rumours-service:v1.2.0
+docker run -d -p 8080:80 --name mafia-rumours-service m1rrerror/mafia-rumours-service:v1.3.0
 ```
 
 The service will be available at [http://localhost:8080](http://localhost:8080).
@@ -134,7 +134,7 @@ The service will be available at [http://localhost:8080](http://localhost:8080).
 docker run -d -p 8080:80 \
   -e DB_CONNECTION_STRING="Host=db;Database=mafia_rumours_service;Username=postgres;Password=postgres" \
   --name mafia-rumours-service \
-  m1rrerror/mafia-rumours-service:v1.2.0
+  m1rrerror/mafia-rumours-service:v1.3.0
 ```
 
 * Stop the container:
