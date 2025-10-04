@@ -358,4 +358,186 @@ public class PostgresRumourServiceTests
         Assert.NotNull(result);
         Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
     }
+    
+    [Fact]
+    public async Task CreateRumourAsync_WithNullTaskApiResponse_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "activity";
+
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent("null", Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
+    }
+
+    [Fact]
+    public async Task CreateRumourAsync_WithNullAppearanceApiResponse_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "appearance";
+
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent("null", Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
+    }
+    
+    [Fact]
+    public async Task CreateRumourAsync_WithNullDataInTaskApi_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "activity";
+
+        var apiResponse = new ApiResponse<Dictionary<string, List<TaskDto>>>
+        {
+            Data = null
+        };
+        var json = JsonSerializer.Serialize(apiResponse);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
+    }
+
+    [Fact]
+    public async Task CreateRumourAsync_WithNullDataInAppearanceApi_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "appearance";
+
+        var apiResponse = new ApiResponse<AppearanceDataDto>
+        {
+            Data = null
+        };
+        var json = JsonSerializer.Serialize(apiResponse);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
+    }
+    
+    [Fact]
+    public async Task CreateRumourAsync_WithNoTasksKeyInApiResponse_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "activity";
+
+        var apiResponse = new ApiResponse<Dictionary<string, List<TaskDto>>>
+        {
+            Data = new Dictionary<string, List<TaskDto>>()
+        };
+        var json = JsonSerializer.Serialize(apiResponse);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"I heard player {targetId} is up to something, but I don't have the details.", result.Text);
+    }
+
+    [Fact]
+    public async Task CreateRumourAsync_WithNullAssetsInAppearanceData_ShouldGenerateDefaultRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient);
+        const string lobbyId = "test-lobby";
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "appearance";
+
+        var apiResponse = new ApiResponse<AppearanceDataDto>
+        {
+            Data = new AppearanceDataDto { Assets = null }
+        };
+        var json = JsonSerializer.Serialize(apiResponse);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
+    }
 }

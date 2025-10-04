@@ -2,11 +2,20 @@ using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MafiaRumoursService.Data;
+using MafiaRumoursService.Middleware;
 using MafiaRumoursService.Services;
 
 Env.Load(options: LoadOptions.TraversePath());
 
 var builder = WebApplication.CreateBuilder(args);
+
+var maxConcurrentRequestsStr = Environment.GetEnvironmentVariable("MAX_CONCURRENT_REQUESTS") ?? "100";
+if (!int.TryParse(maxConcurrentRequestsStr, out var maxConcurrentRequests))
+{
+    maxConcurrentRequests = 100;
+}
+
+builder.Services.AddSingleton(new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests));
 
 builder.Services.AddCors(options =>
 {
@@ -59,6 +68,9 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors("CorsPolicy");
 app.UseRouting();
+
+app.UseMiddleware<RequestThrottlingMiddleware>();
+
 app.MapControllers();
 
 app.Run();

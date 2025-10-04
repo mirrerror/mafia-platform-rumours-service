@@ -46,7 +46,11 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
                     if (!taskResponse.IsSuccessStatusCode) return null;
 
                     var taskApiResponse = await taskResponse.Content.ReadFromJsonAsync<ApiResponse<Dictionary<string, List<TaskDto>>>>();
-                    return taskApiResponse?.Data?["tasks"];
+                    if (taskApiResponse?.Data != null && taskApiResponse.Data.TryGetValue("tasks", out var tasks))
+                    {
+                        return tasks;
+                    }
+                    return null;
 
                 case "appearance":
                     if (string.IsNullOrEmpty(characterServiceUrl)) return null;
