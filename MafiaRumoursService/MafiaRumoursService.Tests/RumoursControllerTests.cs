@@ -206,4 +206,37 @@ public class RumoursControllerTests
 
         httpMessageHandlerMock.Verify();
     }
+    
+    [Fact]
+    public async Task PurchaseRumour_WhenEnvVarIsSet_ShouldUseUrlFromEnv()
+    {
+        const string lobbyId = "test-lobby";
+        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
+        const string customUrl = "http://custom-currency-service:8080";
+
+        Environment.SetEnvironmentVariable("CURRENCY_SERVICE_URL", customUrl);
+
+        var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
+        httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith(customUrl)),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK, Content = new StringContent("{}", Encoding.UTF8, "application/json") })
+            .Verifiable();
+
+        var httpClient = new HttpClient(httpMessageHandlerMock.Object);
+        _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync(rumour);
+
+        await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
+
+        httpMessageHandlerMock.Verify();
+
+        Environment.SetEnvironmentVariable("CURRENCY_SERVICE_URL", null);
+    }
 }
