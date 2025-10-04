@@ -55,7 +55,9 @@ public class RumoursControllerTests
         var result = await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedRumour = Assert.IsType<Rumour>(okResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<Rumour>>(okResult.Value);
+        var returnedRumour = apiResponse.Data;
+        Assert.NotNull(returnedRumour);
         Assert.Equal(rumour.LobbyId, returnedRumour.LobbyId);
         Assert.Equal(rumour.OwnerId, returnedRumour.OwnerId);
         Assert.Equal(rumour.TargetId, returnedRumour.TargetId);
@@ -171,8 +173,9 @@ public class RumoursControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
 
         Assert.NotNull(okResult.Value);
-
-        var returnedRumours = Assert.IsAssignableFrom<IEnumerable<Rumour>>(okResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<IEnumerable<Rumour>>>(okResult.Value);
+        var returnedRumours = apiResponse.Data;
+        Assert.NotNull(returnedRumours);
         Assert.Equal(rumours.Count, returnedRumours.Count());
     }
 
