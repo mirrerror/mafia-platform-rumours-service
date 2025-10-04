@@ -112,16 +112,15 @@ DB_CONNECTION_STRING="Host=localhost;Database=mafia_rumours_service;..."
 You can also pull the pre-built Docker image of the service from Docker Hub.
 
 **Docker Hub Repository:** `m1rrerror/mafia-rumours-service`
-**Latest Tag:** `v1.3.0`
 
 #### Pull and Run
 
 ```bash
 # Pull the image
-docker pull m1rrerror/mafia-rumours-service:v1.3.0
+docker pull m1rrerror/mafia-rumours-service:latest
 
 # Run the container
-docker run -d -p 8080:80 --name mafia-rumours-service m1rrerror/mafia-rumours-service:v1.3.0
+docker run -d -p 8080:80 --name mafia-rumours-service m1rrerror/mafia-rumours-service:latest
 ```
 
 The service will be available at [http://localhost:8080](http://localhost:8080).
@@ -134,7 +133,7 @@ The service will be available at [http://localhost:8080](http://localhost:8080).
 docker run -d -p 8080:80 \
   -e DB_CONNECTION_STRING="Host=db;Database=mafia_rumours_service;Username=postgres;Password=postgres" \
   --name mafia-rumours-service \
-  m1rrerror/mafia-rumours-service:v1.3.0
+  m1rrerror/mafia-rumours-service:latest
 ```
 
 * Stop the container:
@@ -182,7 +181,15 @@ All request and response bodies are in **JSON** format.
 **Success Response (200):**
 ```json
 {
-  "rumour": "Player X was seen near the victim's house last night"
+  "data": {
+    "id": 1,
+    "lobbyId": "test",
+    "type": "role",
+    "ownerId": 0,
+    "targetId": 1,
+    "text": "Player X was seen near the victim's house last night",
+    "createdAt": "2025-10-01T12:00:00Z"
+  }
 }
 ```
 
@@ -220,25 +227,54 @@ All request and response bodies are in **JSON** format.
 **Success Response (200):**
 ```json
 {
-  [
-    {
-      "id": 1,
-      "lobbyId": "test",
-      "type": "role",
-      "ownerId": 0,
-      "targetId": 1,
-      "text": "Player X was seen near the victim's house last night",
-      "createdAt": "2025-10-01T12:00:00Z"
-    },
-    {
-      "id": 2,
-      "lobbyId": "test",
-      "type": "role",
-      "ownerId": 0,
-      "targetId": 2,
-      "text": "Player Y has been acting suspiciously",
-      "createdAt": "2025-10-01T12:00:00Z"
-    }
-  ]
+  "data": {
+    [
+      {
+        "id": 1,
+        "lobbyId": "test",
+        "type": "role",
+        "ownerId": 0,
+        "targetId": 1,
+        "text": "Player X was seen near the victim's house last night",
+        "createdAt": "2025-10-01T12:00:00Z"
+      },
+      {
+        "id": 2,
+        "lobbyId": "test",
+        "type": "role",
+        "ownerId": 0,
+        "targetId": 2,
+        "text": "Player Y has been acting suspiciously",
+        "createdAt": "2025-10-01T12:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+
+---
+
+## General Errors
+
+**503 Service Unavailable**
+
+```json
+{
+  "error": {
+    "code": "CONCURRENCY_LIMIT_REACHED",
+    "message": "The service is temporarily overloaded. Please try again later."
+  }
+}
+```
+
+**408 Request Timeout**
+
+```json
+{
+  "error": {
+    "code": "REQUEST_TIMEOUT",
+    "message": "The request took too long to process."
+  }
 }
 ```
