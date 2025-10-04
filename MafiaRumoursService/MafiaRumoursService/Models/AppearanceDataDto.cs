@@ -5,5 +5,5 @@ namespace MafiaRumoursService.Models;
 public class AppearanceDataDto
 {
     [JsonPropertyName("assets")]
-    public Dictionary<string, object> Assets { get; set; } = [];
+    public Dictionary<string, object>? Assets { get; set; }
 }

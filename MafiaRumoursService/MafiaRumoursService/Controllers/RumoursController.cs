@@ -1,4 +1,4 @@
-﻿using MafiaRumoursService.Exceptions;
+using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
@@ -60,7 +60,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
                 purchaseRumourDto.RumourType
             );
 
-            return Ok(rumour);
+            return Ok(new ApiResponse<Rumour> { Data = rumour });
         }
         catch (RumourTypeNotFoundException e)
         {
@@ -79,6 +79,6 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
     public async Task<IActionResult> GetUserRumours(string lobbyId, long ownerId)
     {
         var rumours = await rumourService.GetRumoursByOwnerAsync(lobbyId, ownerId);
-        return Ok(rumours);
+        return Ok(new ApiResponse<IEnumerable<Rumour>> { Data = rumours });
     }
 }
