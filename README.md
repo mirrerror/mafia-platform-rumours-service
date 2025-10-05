@@ -262,6 +262,17 @@ All request and response bodies are in **JSON** format.
 ```json
 {
   "error": {
+    "code": "SERVICE_UNAVAILABLE",
+    "message": "Gateway service is unavailable: message"
+  }
+}
+```
+
+**503 Service Unavailable**
+
+```json
+{
+  "error": {
     "code": "CONCURRENCY_LIMIT_REACHED",
     "message": "The service is temporarily overloaded. Please try again later."
   }

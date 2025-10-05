@@ -18,7 +18,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
     [HttpPost("{lobbyId}/purchase")]
     public async Task<IActionResult> PurchaseRumour(string lobbyId, [FromBody] PurchaseRumourDto purchaseRumourDto)
     {
-        var currencyServiceUrl = Env.GetString("CURRENCY_SERVICE_URL") ?? "http://localhost:8000";
+        var gatewayServiceUrl = Env.GetString("GATEWAY_SERVICE_URL") ?? "http://localhost:8000";
         var httpClient = httpClientFactory.CreateClient();
 
         var currencyRequestPayload = new
@@ -31,7 +31,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         var jsonPayload = JsonSerializer.Serialize(currencyRequestPayload);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"{currencyServiceUrl}/currency/{purchaseRumourDto.SenderId}")
+        var request = new HttpRequestMessage(HttpMethod.Put, $"{gatewayServiceUrl}/currency/{purchaseRumourDto.SenderId}")
         {
             Content = content
         };
@@ -43,12 +43,14 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                return StatusCode((int)response.StatusCode, $"Failed to process transaction: {errorContent}");
+                var error = new { error = new ErrorResponse("GATEWAY_ERROR", $"Failed to process transaction through gateway: {errorContent}") };
+                return StatusCode((int)response.StatusCode, error);
             }
         }
         catch (HttpRequestException ex)
         {
-            return StatusCode(503, $"Currency service is unavailable: {ex.Message}");
+            var error = new { error = new ErrorResponse("SERVICE_UNAVAILABLE", $"Gateway service is unavailable: {ex.Message}") };
+            return StatusCode(503, error);
         }
 
         try
@@ -64,14 +66,8 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         }
         catch (RumourTypeNotFoundException e)
         {
-            return NotFound(new
-            {
-                error = new
-                {
-                    code = "BAD_RUMOURS_TYPE",
-                    message = e.Message
-                }
-            });
+            var error = new { error = new ErrorResponse("BAD_RUMOURS_TYPE", e.Message) };
+            return NotFound(error);
         }
     }
 
