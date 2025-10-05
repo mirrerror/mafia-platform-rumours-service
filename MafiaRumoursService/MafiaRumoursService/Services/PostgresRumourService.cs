@@ -32,17 +32,16 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
     private async Task<object?> GetExternalRumourData(string rumourType, long targetId)
     {
-        var taskServiceUrl = Env.GetString("TASK_SERVICE_URL");
-        var characterServiceUrl = Env.GetString("CHARACTER_SERVICE_URL");
+        var gatewayServiceUrl = Env.GetString("GATEWAY_SERVICE_URL");
 
         try
         {
             switch (rumourType.ToLower())
             {
                 case "activity":
-                    if (string.IsNullOrEmpty(taskServiceUrl)) return null;
+                    if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
 
-                    var taskResponse = await httpClient.GetAsync($"{taskServiceUrl}/player/{targetId}/tasks?gameId=latest");
+                    var taskResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/player/{targetId}/tasks?gameId=latest");
                     if (!taskResponse.IsSuccessStatusCode) return null;
 
                     var taskApiResponse = await taskResponse.Content.ReadFromJsonAsync<ApiResponse<Dictionary<string, List<TaskDto>>>>();
@@ -53,9 +52,9 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
                     return null;
 
                 case "appearance":
-                    if (string.IsNullOrEmpty(characterServiceUrl)) return null;
+                    if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
 
-                    var appearanceResponse = await httpClient.GetAsync($"{characterServiceUrl}/{targetId}/appearance");
+                    var appearanceResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/{targetId}/appearance");
                     if (!appearanceResponse.IsSuccessStatusCode) return null;
 
                     var appearanceApiResponse = await appearanceResponse.Content.ReadFromJsonAsync<ApiResponse<AppearanceDataDto>>();
