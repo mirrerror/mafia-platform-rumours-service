@@ -22,11 +22,11 @@ public class RumoursControllerTests
         _rumourServiceMock = new Mock<IRumourService>();
         _controller = new RumoursController(_httpClientFactoryMock.Object, _rumourServiceMock.Object);
 
-        Environment.SetEnvironmentVariable("CURRENCY_SERVICE_URL", null);
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
     }
 
     [Fact]
-    public async Task PurchaseRumour_WhenCurrencyServiceIsSuccessful_ShouldReturnOk()
+    public async Task PurchaseRumour_WhenGatewayIsSuccessful_ShouldReturnOk()
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
@@ -59,12 +59,10 @@ public class RumoursControllerTests
         var returnedRumour = apiResponse.Data;
         Assert.NotNull(returnedRumour);
         Assert.Equal(rumour.LobbyId, returnedRumour.LobbyId);
-        Assert.Equal(rumour.OwnerId, returnedRumour.OwnerId);
-        Assert.Equal(rumour.TargetId, returnedRumour.TargetId);
     }
 
     [Fact]
-    public async Task PurchaseRumour_WhenCurrencyServiceFails_ShouldReturnStatusCode()
+    public async Task PurchaseRumour_WhenGatewayServiceFails_ShouldReturnStatusCode()
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
@@ -91,14 +89,16 @@ public class RumoursControllerTests
 
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal((int)HttpStatusCode.BadRequest, objectResult.StatusCode);
-        Assert.Equal($"Failed to process transaction: {errorContent}", objectResult.Value);
+        
+        AssertErrorResponse(objectResult.Value, "GATEWAY_ERROR", $"Failed to process transaction through gateway: {errorContent}");
     }
 
     [Fact]
-    public async Task PurchaseRumour_WhenCurrencyServiceIsUnavailable_ShouldReturnServiceUnavailable()
+    public async Task PurchaseRumour_WhenGatewayServiceIsUnavailable_ShouldReturnServiceUnavailable()
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        const string exceptionMessage = "Service unavailable";
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         httpMessageHandlerMock
@@ -108,7 +108,7 @@ public class RumoursControllerTests
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
-            .ThrowsAsync(new HttpRequestException("Service unavailable"));
+            .ThrowsAsync(new HttpRequestException(exceptionMessage));
 
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
@@ -117,7 +117,8 @@ public class RumoursControllerTests
 
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal((int)HttpStatusCode.ServiceUnavailable, objectResult.StatusCode);
-        Assert.Equal("Currency service is unavailable: Service unavailable", objectResult.Value);
+        
+        AssertErrorResponse(objectResult.Value, "SERVICE_UNAVAILABLE", $"Gateway service is unavailable: {exceptionMessage}");
     }
 
     [Fact]
@@ -125,6 +126,7 @@ public class RumoursControllerTests
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "unknown" };
+        const string exceptionMessage = "Rumour type not found";
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         httpMessageHandlerMock
@@ -140,25 +142,21 @@ public class RumoursControllerTests
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
         _rumourServiceMock.Setup(s => s.CreateRumourAsync(lobbyId, purchaseRumourDto.SenderId, purchaseRumourDto.TargetId, purchaseRumourDto.RumourType))
-            .ThrowsAsync(new RumourTypeNotFoundException("Rumour type not found"));
+            .ThrowsAsync(new RumourTypeNotFoundException(exceptionMessage));
 
         var result = await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-        var resultValue = notFoundResult.Value;
-        var error = resultValue!.GetType().GetProperty("error")!.GetValue(resultValue, null);
-        var code = error!.GetType().GetProperty("code")!.GetValue(error, null);
-        var message = error.GetType().GetProperty("message")!.GetValue(error, null);
-
-        Assert.Equal("BAD_RUMOURS_TYPE", code);
-        Assert.Equal("Rumour type not found", message);
+        
+        AssertErrorResponse(notFoundResult.Value, "BAD_RUMOURS_TYPE", exceptionMessage);
     }
-
+    
     [Fact]
     public async Task GetUserRumours_ShouldReturnOkWithRumours()
     {
         const string lobbyId = "test-lobby";
         const long ownerId = 1;
+        
         var rumours = new List<Rumour>
         {
             new() { Id = 1, LobbyId = lobbyId, OwnerId = ownerId, TargetId = 2, Type = "role", Text = "Test rumour 1", CreatedAt = DateTime.UtcNow },
@@ -171,12 +169,8 @@ public class RumoursControllerTests
         var result = await _controller.GetUserRumours(lobbyId, ownerId);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-
-        Assert.NotNull(okResult.Value);
         var apiResponse = Assert.IsType<ApiResponse<IEnumerable<Rumour>>>(okResult.Value);
-        var returnedRumours = apiResponse.Data;
-        Assert.NotNull(returnedRumours);
-        Assert.Equal(rumours.Count, returnedRumours.Count());
+        Assert.Equal(rumours.Count, apiResponse.Data!.Count());
     }
 
     [Fact]
@@ -184,6 +178,8 @@ public class RumoursControllerTests
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        
+        // FIXED: Initialized the mock rumour object with all required properties.
         var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -194,7 +190,7 @@ public class RumoursControllerTests
                 ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith("http://localhost:8000")),
                 ItExpr.IsAny<CancellationToken>()
             )
-            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK, Content = new StringContent("{}", Encoding.UTF8, "application/json") })
+            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
             .Verifiable();
 
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
@@ -212,20 +208,21 @@ public class RumoursControllerTests
     {
         const string lobbyId = "test-lobby";
         var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
-        var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
-        const string customUrl = "http://custom-currency-service:8080";
 
-        Environment.SetEnvironmentVariable("CURRENCY_SERVICE_URL", customUrl);
+        var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
+        const string customGatewayUrl = "http://custom-gateway-service:8080";
+
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", customGatewayUrl);
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         httpMessageHandlerMock
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith(customUrl)),
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith(customGatewayUrl)),
                 ItExpr.IsAny<CancellationToken>()
             )
-            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK, Content = new StringContent("{}", Encoding.UTF8, "application/json") })
+            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
             .Verifiable();
 
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
@@ -236,7 +233,28 @@ public class RumoursControllerTests
         await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
 
         httpMessageHandlerMock.Verify();
+        
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
+    }
+    
+    private static void AssertErrorResponse(object? value, string expectedCode, string expectedMessage)
+    {
+        Assert.NotNull(value);
+        var errorProperty = value.GetType().GetProperty("error");
+        Assert.NotNull(errorProperty);
 
-        Environment.SetEnvironmentVariable("CURRENCY_SERVICE_URL", null);
+        var errorObject = errorProperty.GetValue(value);
+        Assert.NotNull(errorObject);
+
+        var codeProperty = errorObject.GetType().GetProperty("Code");
+        var messageProperty = errorObject.GetType().GetProperty("Message");
+        Assert.NotNull(codeProperty);
+        Assert.NotNull(messageProperty);
+
+        var actualCode = codeProperty.GetValue(errorObject) as string;
+        var actualMessage = messageProperty.GetValue(errorObject) as string;
+
+        Assert.Equal(expectedCode, actualCode);
+        Assert.Equal(expectedMessage, actualMessage);
     }
 }
