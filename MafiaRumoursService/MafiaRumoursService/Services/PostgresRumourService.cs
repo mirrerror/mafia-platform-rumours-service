@@ -1,5 +1,4 @@
-﻿using DotNetEnv;
-using MafiaRumoursService.Data;
+﻿using MafiaRumoursService.Data;
 using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using Microsoft.EntityFrameworkCore;
@@ -32,15 +31,18 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
     private async Task<object?> GetExternalRumourData(string rumourType, long targetId)
     {
-        var gatewayServiceUrl = Env.GetString("GATEWAY_SERVICE_URL");
+        var gatewayServiceUrl = Environment.GetEnvironmentVariable("GATEWAY_SERVICE_URL");
+        
+        if (string.IsNullOrEmpty(gatewayServiceUrl))
+        {
+            return null;
+        }
 
         try
         {
             switch (rumourType.ToLower())
             {
                 case "activity":
-                    if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
-
                     var taskResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/player/{targetId}/tasks?gameId=latest");
                     if (!taskResponse.IsSuccessStatusCode) return null;
 
@@ -52,8 +54,6 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
                     return null;
 
                 case "appearance":
-                    if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
-
                     var appearanceResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/{targetId}/appearance");
                     if (!appearanceResponse.IsSuccessStatusCode) return null;
 

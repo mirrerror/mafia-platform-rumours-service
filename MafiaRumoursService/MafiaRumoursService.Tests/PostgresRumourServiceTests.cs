@@ -100,7 +100,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -126,7 +126,7 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.InternalServerError
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -164,7 +164,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -190,7 +190,7 @@ public class PostgresRumourServiceTests
             StatusCode = HttpStatusCode.InternalServerError
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -212,7 +212,7 @@ public class PostgresRumourServiceTests
         const long targetId = 2;
         const string rumourType = "activity";
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", null);
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
 
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
 
@@ -230,7 +230,7 @@ public class PostgresRumourServiceTests
         const long targetId = 2;
         const string rumourType = "activity";
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -262,7 +262,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -294,7 +294,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -314,7 +314,7 @@ public class PostgresRumourServiceTests
         const string lobbyId = "test-lobby";
         const long ownerId = 1;
         const long targetId = 2;
-        const string rumourType = "unknown-type"; // An unsupported type
+        const string rumourType = "unknown-type";
 
         await Assert.ThrowsAsync<RumourTypeNotFoundException>(() => service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType));
     }
@@ -329,7 +329,7 @@ public class PostgresRumourServiceTests
         const long targetId = 2;
         const string rumourType = "appearance";
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", null);
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
 
         var result = await service.CreateRumourAsync(lobbyId, ownerId, targetId, rumourType);
 
@@ -347,7 +347,7 @@ public class PostgresRumourServiceTests
         const long targetId = 2;
         const string rumourType = "appearance";
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -374,7 +374,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent("null", Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -401,7 +401,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent("null", Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -433,7 +433,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -465,7 +465,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -497,7 +497,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("TASK_SERVICE_URL", "http://localhost:8080");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
@@ -529,7 +529,7 @@ public class PostgresRumourServiceTests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        Environment.SetEnvironmentVariable("CHARACTER_SERVICE_URL", "http://localhost:8081");
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
 
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
