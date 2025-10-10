@@ -30,7 +30,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         var jsonPayload = JsonSerializer.Serialize(currencyRequestPayload);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"{gatewayServiceUrl}/currency/{purchaseRumourDto.SenderId}")
+        var request = new HttpRequestMessage(HttpMethod.Put, $"{gatewayServiceUrl}/api/currency/{purchaseRumourDto.SenderId}")
         {
             Content = content
         };
@@ -56,6 +56,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         {
             var rumour = await rumourService.CreateRumourAsync(
                 lobbyId,
+                purchaseRumourDto.GameId, 
                 purchaseRumourDto.SenderId,
                 purchaseRumourDto.TargetId,
                 purchaseRumourDto.RumourType

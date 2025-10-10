@@ -2,8 +2,8 @@
 
 namespace MafiaRumoursService.Models;
 
-public class AppearanceDataDto
+public class PlayerAssetsResponseDto
 {
     [JsonPropertyName("assets")]
-    public Dictionary<string, object>? Assets { get; set; }
+    public PlayerAssetsDto? Assets { get; set; }
 }
