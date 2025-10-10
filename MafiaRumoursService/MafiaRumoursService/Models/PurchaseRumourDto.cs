@@ -1,8 +1,18 @@
-﻿namespace MafiaRumoursService.Models;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace MafiaRumoursService.Models;
 
 public class PurchaseRumourDto
 {
-    public required string RumourType { get; set; }
-    public required long SenderId { get; set; }
-    public required long TargetId { get; set; }
+    [Required]
+    public long GameId { get; set; }
+
+    [Required]
+    public long SenderId { get; set; }
+
+    [Required]
+    public long TargetId { get; set; }
+
+    [Required]
+    public string RumourType { get; set; } = string.Empty;
 }

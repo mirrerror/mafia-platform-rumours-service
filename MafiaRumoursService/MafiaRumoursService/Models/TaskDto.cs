@@ -4,6 +4,9 @@ namespace MafiaRumoursService.Models;
 
 public class TaskDto
 {
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -12,4 +15,7 @@ public class TaskDto
 
     [JsonPropertyName("location")]
     public string Location { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
 }

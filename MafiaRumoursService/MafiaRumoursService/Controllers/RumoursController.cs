@@ -20,17 +20,18 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         var gatewayServiceUrl = Environment.GetEnvironmentVariable("GATEWAY_SERVICE_URL") ?? "http://localhost:8000";
         var httpClient = httpClientFactory.CreateClient();
 
-        var currencyRequestPayload = new
+        var currencyRequestPayload = new UpdateCurrencyDto
         {
-            currency = RumourCurrency,
-            amount = RumourCost,
-            operation = "subtract"
+            Currency = RumourCurrency,
+            Amount = RumourCost,
+            Operation = "subtract"
         };
 
         var jsonPayload = JsonSerializer.Serialize(currencyRequestPayload);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"{gatewayServiceUrl}/currency/{purchaseRumourDto.SenderId}")
+        var requestUrl = $"{gatewayServiceUrl}/api/users/currency/{purchaseRumourDto.SenderId}";
+        var request = new HttpRequestMessage(HttpMethod.Put, requestUrl)
         {
             Content = content
         };
@@ -56,6 +57,7 @@ public class RumoursController(IHttpClientFactory httpClientFactory, IRumourServ
         {
             var rumour = await rumourService.CreateRumourAsync(
                 lobbyId,
+                purchaseRumourDto.GameId, 
                 purchaseRumourDto.SenderId,
                 purchaseRumourDto.TargetId,
                 purchaseRumourDto.RumourType

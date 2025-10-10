@@ -26,7 +26,7 @@ Before you begin, ensure you have the following installed on your machine:
 Clone the project to your local machine:
 
 ```bash
-https://github.com/mirrerror/mafia-platform-rumours-service.git
+git clone https://github.com/mirrerror/mafia-platform-rumours-service.git
 cd mafia-platform-rumours-service
 ````
 
@@ -170,7 +170,8 @@ All request and response bodies are in **JSON** format.
 **Request Body:**
 ```json
 {
-  "rumourType": "role",
+  "gameId": 1,
+  "rumourType": "activity",
   "senderId": 0,
   "targetId": 1
 }
@@ -184,7 +185,7 @@ All request and response bodies are in **JSON** format.
   "data": {
     "id": 1,
     "lobbyId": "test",
-    "type": "role",
+    "type": "activity",
     "ownerId": 0,
     "targetId": 1,
     "text": "Player X was seen near the victim's house last night",
@@ -232,7 +233,7 @@ All request and response bodies are in **JSON** format.
       {
         "id": 1,
         "lobbyId": "test",
-        "type": "role",
+        "type": "activity",
         "ownerId": 0,
         "targetId": 1,
         "text": "Player X was seen near the victim's house last night",
@@ -241,7 +242,7 @@ All request and response bodies are in **JSON** format.
       {
         "id": 2,
         "lobbyId": "test",
-        "type": "role",
+        "type": "activity",
         "ownerId": 0,
         "targetId": 2,
         "text": "Player Y has been acting suspiciously",
