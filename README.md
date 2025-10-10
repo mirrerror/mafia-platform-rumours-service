@@ -26,7 +26,7 @@ Before you begin, ensure you have the following installed on your machine:
 Clone the project to your local machine:
 
 ```bash
-https://github.com/mirrerror/mafia-platform-rumours-service.git
+git clone https://github.com/mirrerror/mafia-platform-rumours-service.git
 cd mafia-platform-rumours-service
 ````
 
