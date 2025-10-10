@@ -29,7 +29,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WhenGatewayIsSuccessful_ShouldReturnOk()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
         var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -49,7 +49,7 @@ public class RumoursControllerTests
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-        _rumourServiceMock.Setup(s => s.CreateRumourAsync(lobbyId, purchaseRumourDto.SenderId, purchaseRumourDto.TargetId, purchaseRumourDto.RumourType))
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(lobbyId, purchaseRumourDto.GameId, purchaseRumourDto.SenderId, purchaseRumourDto.TargetId, purchaseRumourDto.RumourType))
             .ReturnsAsync(rumour);
 
         var result = await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
@@ -65,7 +65,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WhenGatewayServiceFails_ShouldReturnStatusCode()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
         const string errorContent = "Insufficient funds";
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -97,7 +97,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WhenGatewayServiceIsUnavailable_ShouldReturnServiceUnavailable()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
         const string exceptionMessage = "Service unavailable";
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -125,7 +125,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WithUnknownRumourType_ShouldReturnNotFound()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "unknown" };
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "unknown" };
         const string exceptionMessage = "Rumour type not found";
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -141,7 +141,7 @@ public class RumoursControllerTests
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-        _rumourServiceMock.Setup(s => s.CreateRumourAsync(lobbyId, purchaseRumourDto.SenderId, purchaseRumourDto.TargetId, purchaseRumourDto.RumourType))
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(lobbyId, purchaseRumourDto.GameId, purchaseRumourDto.SenderId, purchaseRumourDto.TargetId, purchaseRumourDto.RumourType))
             .ThrowsAsync(new RumourTypeNotFoundException(exceptionMessage));
 
         var result = await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
@@ -177,9 +177,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WhenEnvVarIsNull_ShouldUseDefaultUrl()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
-        
-        // FIXED: Initialized the mock rumour object with all required properties.
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
         var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
 
         var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
@@ -187,7 +185,8 @@ public class RumoursControllerTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith("http://localhost:8000")),
+                ItExpr.Is<HttpRequestMessage>(req => 
+                    req.RequestUri!.ToString() == $"http://localhost:8000/api/users/currency/{purchaseRumourDto.SenderId}"),
                 ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
@@ -195,7 +194,7 @@ public class RumoursControllerTests
 
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
-        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
             .ReturnsAsync(rumour);
 
         await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
@@ -207,7 +206,7 @@ public class RumoursControllerTests
     public async Task PurchaseRumour_WhenEnvVarIsSet_ShouldUseUrlFromEnv()
     {
         const string lobbyId = "test-lobby";
-        var purchaseRumourDto = new PurchaseRumourDto { SenderId = 1, TargetId = 2, RumourType = "role" };
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
 
         var rumour = new Rumour { Id = 1, LobbyId = lobbyId, OwnerId = 1, TargetId = 2, Type = "role", Text = "Test rumour", CreatedAt = DateTime.UtcNow };
         const string customGatewayUrl = "http://custom-gateway-service:8080";
@@ -219,7 +218,8 @@ public class RumoursControllerTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith(customGatewayUrl)),
+                ItExpr.Is<HttpRequestMessage>(req => 
+                    req.RequestUri!.ToString() == $"{customGatewayUrl}/api/users/currency/{purchaseRumourDto.SenderId}"),
                 ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
@@ -227,7 +227,7 @@ public class RumoursControllerTests
 
         var httpClient = new HttpClient(httpMessageHandlerMock.Object);
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
-        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
             .ReturnsAsync(rumour);
 
         await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);

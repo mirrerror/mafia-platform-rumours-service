@@ -9,9 +9,9 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 {
     private static readonly Random Random = new();
 
-    public async Task<Rumour> CreateRumourAsync(string lobbyId, long ownerId, long targetId, string type)
+    public async Task<Rumour> CreateRumourAsync(string lobbyId, long gameId, long ownerId, long targetId, string type)
     {
-        var externalData = await GetExternalRumourData(type, targetId);
+        var externalData = await GetExternalRumourData(type, targetId, gameId);
 
         var rumour = new Rumour
         {
@@ -29,35 +29,27 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
         return rumour;
     }
 
-    private async Task<object?> GetExternalRumourData(string rumourType, long targetId)
+    private async Task<object?> GetExternalRumourData(string rumourType, long targetId, long gameId)
     {
         var gatewayServiceUrl = Environment.GetEnvironmentVariable("GATEWAY_SERVICE_URL");
-        
-        if (string.IsNullOrEmpty(gatewayServiceUrl))
-        {
-            return null;
-        }
+        if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
 
         try
         {
             switch (rumourType.ToLower())
             {
                 case "activity":
-                    var taskResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/player/{targetId}/tasks?gameId=latest");
+                    var taskResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/api/tasks/player/{targetId}/tasks?gameId={gameId}");
                     if (!taskResponse.IsSuccessStatusCode) return null;
 
-                    var taskApiResponse = await taskResponse.Content.ReadFromJsonAsync<ApiResponse<Dictionary<string, List<TaskDto>>>>();
-                    if (taskApiResponse?.Data != null && taskApiResponse.Data.TryGetValue("tasks", out var tasks))
-                    {
-                        return tasks;
-                    }
-                    return null;
+                    var taskApiResponse = await taskResponse.Content.ReadFromJsonAsync<ApiResponse<TasksListResponseDto>>();
+                    return taskApiResponse?.Data?.Tasks;
 
                 case "appearance":
-                    var appearanceResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/{targetId}/appearance");
+                    var appearanceResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/api/character/{targetId}/appearance");
                     if (!appearanceResponse.IsSuccessStatusCode) return null;
 
-                    var appearanceApiResponse = await appearanceResponse.Content.ReadFromJsonAsync<ApiResponse<AppearanceDataDto>>();
+                    var appearanceApiResponse = await appearanceResponse.Content.ReadFromJsonAsync<ApiResponse<PlayerAssetsResponseDto>>();
                     return appearanceApiResponse?.Data?.Assets;
 
                 default:
@@ -70,7 +62,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
             return null;
         }
     }
-
+    
     public async Task<IEnumerable<Rumour>> GetRumoursByOwnerAsync(string lobbyId, long ownerId)
     {
         return await dbContext.Rumours
@@ -90,7 +82,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
                 }
                 return $"I heard player {targetId} is up to something, but I don't have the details.";
             case "appearance":
-                if (externalData is Dictionary<string, object> assets && assets.Count != 0)
+                if (externalData is PlayerAssetsDto assets)
                 {
                     return GenerateAppearanceRumour(targetId, assets);
                 }
@@ -113,14 +105,32 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
         return templates[Random.Next(templates.Length)];
     }
 
-    private string GenerateAppearanceRumour(long targetId, Dictionary<string, object> assets)
+    private string GenerateAppearanceRumour(long targetId, PlayerAssetsDto assets)
     {
-        var (slot, asset) = assets.ElementAt(Random.Next(assets.Count));
-        var assetName = asset.ToString();
+        var assetList = new List<KeyValuePair<string, long?>>
+        {
+            new("hair", assets.Hair),
+            new("shirt", assets.Shirt),
+            new("pants", assets.Pants)
+        }.Where(kv => kv.Value.HasValue).ToList();
+
+        if (assets.Accessories?.Count > 0)
+        {
+            assetList.Add(new KeyValuePair<string, long?>("accessory", assets.Accessories[Random.Next(assets.Accessories.Count)]));
+        }
+
+        if (assetList.Count == 0)
+        {
+             return $"Player {targetId} has a very plain appearance, almost too plain if you ask me.";
+        }
+        
+        var randomAsset = assetList[Random.Next(assetList.Count)];
+        var slot = randomAsset.Key;
+        var assetId = randomAsset.Value;
 
         string[] templates = [
-            $"Did you see the odd {slot} player {targetId} was wearing? Very suspicious.",
-            $"Player {targetId}'s choice of {assetName} for their {slot} is... interesting. Makes you wonder.",
+            $"Did you see the odd {slot} player {targetId} was wearing? It had ID {assetId}. Very suspicious.",
+            $"Player {targetId}'s choice of {slot} (ID: {assetId}) is... interesting. Makes you wonder.",
             $"I'm not saying anything, but player {targetId}'s {slot} looks just like the one the culprit was described wearing."
         ];
 
