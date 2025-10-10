@@ -185,7 +185,8 @@ public class RumoursControllerTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith("http://localhost:8000")),
+                ItExpr.Is<HttpRequestMessage>(req => 
+                    req.RequestUri!.ToString() == $"http://localhost:8000/api/users/currency/{purchaseRumourDto.SenderId}"),
                 ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
@@ -217,7 +218,8 @@ public class RumoursControllerTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().StartsWith(customGatewayUrl)),
+                ItExpr.Is<HttpRequestMessage>(req => 
+                    req.RequestUri!.ToString() == $"{customGatewayUrl}/api/users/currency/{purchaseRumourDto.SenderId}"),
                 ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK })
