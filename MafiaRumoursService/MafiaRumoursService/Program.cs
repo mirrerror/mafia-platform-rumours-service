@@ -27,6 +27,9 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHttpClient();
 
+builder.Services.AddSingleton<ServiceRegistryClient>();
+builder.Services.AddHostedService<HeartbeatService>();
+
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -48,6 +51,8 @@ builder.Services.AddScoped<IRumourService, PostgresRumourService>();
 
 var app = builder.Build();
 
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -61,10 +66,23 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while migrating the database.");
     }
 }
+
+var registryClient = app.Services.GetRequiredService<ServiceRegistryClient>();
+
+app.Lifetime.ApplicationStarted.Register(async void () =>
+{
+    logger.LogInformation("Application started. Registering with service discovery...");
+    await registryClient.RegisterAsync();
+});
+
+app.Lifetime.ApplicationStopping.Register(async void () =>
+{
+    logger.LogInformation("Application stopping. Deregistering from service discovery...");
+    await registryClient.DeregisterAsync();
+});
 
 app.UseCors("CorsPolicy");
 app.UseRouting();
