@@ -41,7 +41,7 @@ public class HeartbeatServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_LogsStart_AndCallsHeartbeat()
+    public async Task ExecuteAsync_LogsStart_AndCallsHeartbeat_AndStops()
     {
         using var cts = new CancellationTokenSource();
         _mockRegistryClient.Setup(c => c.SendHeartbeatAsync()).Returns(Task.CompletedTask);
@@ -61,11 +61,21 @@ public class HeartbeatServiceTests : IDisposable
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+        
         _mockRegistryClient.Verify(c => c.SendHeartbeatAsync(), Times.AtLeastOnce);
+        
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Heartbeat service stopping.")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ExecuteAsync_LogsError_WhenHeartbeatFails()
+    public async Task ExecuteAsync_LogsError_WhenHeartbeatFails_AndStops()
     {
         using var cts = new CancellationTokenSource();
         var testException = new HttpRequestException("Heartbeat network failed");
@@ -86,6 +96,16 @@ public class HeartbeatServiceTests : IDisposable
                 It.Is<Exception>(ex => ex == testException),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce);
+            
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Heartbeat service stopping.")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+            
          _mockRegistryLogger.Verify(
              log => log.Log(
                  LogLevel.Error,
@@ -107,10 +127,28 @@ public class HeartbeatServiceTests : IDisposable
 
         var service = new HeartbeatService(serviceClientMock.Object, logger.Object);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await service.StartAsync(cancellationTokenSource.Token));
+        await service.StartAsync(cancellationTokenSource.Token);
 
         serviceClientMock.Verify(c => c.SendHeartbeatAsync(), Times.Never);
+        
+        logger.Verify(
+            log => log.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Heartbeat service stopped during initial delay.")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+            
+        logger.Verify(
+            log => log.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Heartbeat service stopping.")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+
         logger.Verify(
             x => x.Log(
                 It.Is<LogLevel>(l => l == LogLevel.Error),

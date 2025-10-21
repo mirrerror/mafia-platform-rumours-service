@@ -111,4 +111,43 @@ public class LogsControllerTests : IDisposable
 
         await Task.Delay(50);
     }
+    
+    [Fact]
+    public async Task DownloadLogs_Returns500_WhenFileIsLocked()
+    {
+        if (!File.Exists(_logFilePath))
+        {
+            await File.WriteAllTextAsync(_logFilePath, "test log");
+        }
+
+        FileStream lockStream = null!;
+        try
+        {
+            lockStream = new FileStream(_logFilePath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            var loggerMock = new Mock<ILogger<LogsController>>();
+            var controller = new LogsController(loggerMock.Object);
+            SetControllerLogFilePath(controller, _logFilePath);
+
+            var result = controller.DownloadLogs();
+
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
+            Assert.NotNull(statusCodeResult.Value);
+            Assert.Contains("An error occurred", statusCodeResult.Value.ToString());
+
+            loggerMock.Verify(
+                log => log.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error occurred while trying to read the log file")),
+                    It.IsAny<IOException>(), 
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+        finally
+        {
+            await lockStream.DisposeAsync();
+        }
+    }
 }
