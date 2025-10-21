@@ -26,7 +26,7 @@ public class ServiceRegistryClient
         _logger.LogWarning("SERVICE_PORT not found or invalid in .env. Defaulting to 5000.");
     }
 
-    public async Task RegisterAsync()
+    public virtual async Task RegisterAsync()
     {
         if (string.IsNullOrEmpty(_discoveryUrl))
         {
@@ -65,7 +65,7 @@ public class ServiceRegistryClient
         }
     }
 
-    public async Task DeregisterAsync()
+    public virtual async Task DeregisterAsync()
     {
         if (string.IsNullOrEmpty(InstanceId) || string.IsNullOrEmpty(_discoveryUrl))
         {
@@ -92,7 +92,7 @@ public class ServiceRegistryClient
         }
     }
 
-    public async Task SendHeartbeatAsync()
+    public virtual async Task SendHeartbeatAsync()
     {
         if (string.IsNullOrEmpty(InstanceId) || string.IsNullOrEmpty(_discoveryUrl))
         {

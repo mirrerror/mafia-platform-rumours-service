@@ -6,6 +6,11 @@ EXPOSE 8080
 # Create a non-root user and group for better security
 RUN addgroup --system --gid 1000 appgroup && \
     adduser --system --uid 1000 --ingroup appgroup appuser
+
+RUN mkdir -p /app/logs && \
+    chown -R appuser:appgroup /app/logs
+
+# Now, switch to the non-root user
 USER appuser
 
 # Stage 2: Build the application
@@ -35,5 +40,5 @@ RUN dotnet publish "MafiaRumoursService.csproj" -c $BUILD_CONFIGURATION -o /app/
 # Stage 5: Create the final, lean image
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=publish --chown=appuser:appgroup /app/publish .
 ENTRYPOINT ["dotnet", "MafiaRumoursService.dll"]

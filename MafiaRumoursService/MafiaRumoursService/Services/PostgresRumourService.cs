@@ -1,16 +1,24 @@
-﻿using MafiaRumoursService.Data;
+using MafiaRumoursService.Data;
 using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MafiaRumoursService.Services;
 
-public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpClient) : IRumourService
+public class PostgresRumourService(
+    RumoursDbContext dbContext, 
+    HttpClient httpClient, 
+    ILogger<PostgresRumourService> logger
+) : IRumourService
 {
     private static readonly Random Random = new();
 
     public async Task<Rumour> CreateRumourAsync(string lobbyId, long gameId, long ownerId, long targetId, string type)
     {
+        logger.LogInformation(
+            "Creating rumour. Lobby: {LobbyId}, Game: {GameId}, Owner: {OwnerId}, Target: {TargetId}, Type: {Type}",
+            lobbyId, gameId, ownerId, targetId, type);
+        
         var externalData = await GetExternalRumourData(type, targetId, gameId);
 
         var rumour = new Rumour
@@ -25,6 +33,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
         dbContext.Rumours.Add(rumour);
         await dbContext.SaveChangesAsync();
+        logger.LogInformation("Rumour {RumourId} saved to database.", rumour.Id);
 
         return rumour;
     }
@@ -32,39 +41,65 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
     private async Task<object?> GetExternalRumourData(string rumourType, long targetId, long gameId)
     {
         var gatewayServiceUrl = Environment.GetEnvironmentVariable("GATEWAY_SERVICE_URL");
-        if (string.IsNullOrEmpty(gatewayServiceUrl)) return null;
+        if (string.IsNullOrEmpty(gatewayServiceUrl))
+        {
+            logger.LogWarning("GATEWAY_SERVICE_URL is not set. Cannot fetch external data for rumour.");
+            return null;
+        }
 
         try
         {
+            string? url;
             switch (rumourType.ToLower())
             {
                 case "activity":
-                    var taskResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/api/tasks/player/{targetId}/tasks?gameId={gameId}");
-                    if (!taskResponse.IsSuccessStatusCode) return null;
+                    url = $"{gatewayServiceUrl}/api/tasks/player/{targetId}/tasks?gameId={gameId}";
+                    logger.LogDebug("Fetching external data for 'activity' rumour from: {Url}", url);
+                    var taskResponse = await httpClient.GetAsync(url);
+                    if (!taskResponse.IsSuccessStatusCode)
+                    {
+                        logger.LogWarning("Failed to fetch 'activity' data. Status: {StatusCode}, URL: {Url}", taskResponse.StatusCode, url);
+                        return null;
+                    }
 
                     var taskApiResponse = await taskResponse.Content.ReadFromJsonAsync<ApiResponse<TasksListResponseDto>>();
+                    logger.LogDebug("Successfully fetched {TaskCount} tasks for 'activity' rumour.", taskApiResponse?.Data?.Tasks?.Count ?? 0);
                     return taskApiResponse?.Data?.Tasks;
 
                 case "appearance":
-                    var appearanceResponse = await httpClient.GetAsync($"{gatewayServiceUrl}/api/character/{targetId}/appearance");
-                    if (!appearanceResponse.IsSuccessStatusCode) return null;
+                    url = $"{gatewayServiceUrl}/api/character/{targetId}/appearance";
+                    logger.LogDebug("Fetching external data for 'appearance' rumour from: {Url}", url);
+                    var appearanceResponse = await httpClient.GetAsync(url);
+                    if (!appearanceResponse.IsSuccessStatusCode)
+                    {
+                        logger.LogWarning("Failed to fetch 'appearance' data. Status: {StatusCode}, URL: {Url}", appearanceResponse.StatusCode, url);
+                        return null;
+                    }
 
                     var appearanceApiResponse = await appearanceResponse.Content.ReadFromJsonAsync<ApiResponse<PlayerAssetsResponseDto>>();
+                    logger.LogDebug("Successfully fetched 'appearance' data for Target: {TargetId}", targetId);
                     return appearanceApiResponse?.Data?.Assets;
 
                 default:
+                    logger.LogWarning("No external data fetch logic for rumour type: {RumourType}", rumourType);
                     return null;
             }
         }
         catch (HttpRequestException e)
         {
-            Console.WriteLine($"Error fetching external data for rumour type '{rumourType}': {e.Message}");
+            logger.LogError(e, "Error fetching external data for rumour type '{RumourType}' from Gateway.", rumourType);
+            return null;
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "An unexpected error occurred while fetching external data for rumour type '{RumourType}'.", rumourType);
             return null;
         }
     }
     
     public async Task<IEnumerable<Rumour>> GetRumoursByOwnerAsync(string lobbyId, long ownerId)
     {
+        logger.LogDebug("Querying database for rumours. Lobby: {LobbyId}, Owner: {OwnerId}", lobbyId, ownerId);
         return await dbContext.Rumours
             .Where(r => r.LobbyId == lobbyId && r.OwnerId == ownerId)
             .OrderByDescending(r => r.CreatedAt)
@@ -73,6 +108,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
     private string GenerateRumourText(string rumourType, long targetId, object? externalData)
     {
+        logger.LogDebug("Generating rumour text for Type: {RumourType}, Target: {TargetId}", rumourType, targetId);
         switch (rumourType.ToLower())
         {
             case "activity":
@@ -80,14 +116,17 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
                 {
                     return GenerateActivityRumour(targetId, tasks);
                 }
+                logger.LogInformation("No 'activity' data found for Target: {TargetId}. Using default text.", targetId);
                 return $"I heard player {targetId} is up to something, but I don't have the details.";
             case "appearance":
                 if (externalData is PlayerAssetsDto assets)
                 {
                     return GenerateAppearanceRumour(targetId, assets);
                 }
+                logger.LogInformation("No 'appearance' data found for Target: {TargetId}. Using default text.", targetId);
                 return $"Player {targetId} is trying to blend in, but their disguise is impeccable.";
             default:
+                logger.LogWarning("Attempted to generate rumour text for unknown type: {RumourType}", rumourType);
                 throw new RumourTypeNotFoundException("Rumours type not found");
         }
     }
@@ -95,6 +134,7 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
     private string GenerateActivityRumour(long targetId, List<TaskDto> tasks)
     {
         var task = tasks[Random.Next(tasks.Count)];
+        logger.LogDebug("Generating 'activity' rumour text using Task: {TaskName} at {Location}", task.Name, task.Location);
 
         string[] templates = [
             $"Someone saw player {targetId} at the {task.Location}, pretending to '{task.Name}'. What were they really doing?",
@@ -121,12 +161,12 @@ public class PostgresRumourService(RumoursDbContext dbContext, HttpClient httpCl
 
         if (assetList.Count == 0)
         {
+             logger.LogDebug("No specific assets found for 'appearance' rumour on Target: {TargetId}. Using plain text.", targetId);
              return $"Player {targetId} has a very plain appearance, almost too plain if you ask me.";
         }
         
-        var randomAsset = assetList[Random.Next(assetList.Count)];
-        var slot = randomAsset.Key;
-        var assetId = randomAsset.Value;
+        var (slot, assetId) = assetList[Random.Next(assetList.Count)];
+        logger.LogDebug("Generating 'appearance' rumour text using AssetSlot: {Slot}, AssetId: {AssetId}", slot, assetId);
 
         string[] templates = [
             $"Did you see the odd {slot} player {targetId} was wearing? It had ID {assetId}. Very suspicious.",

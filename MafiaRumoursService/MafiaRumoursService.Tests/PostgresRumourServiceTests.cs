@@ -6,6 +6,7 @@ using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using MafiaRumoursService.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 
@@ -19,6 +20,7 @@ public class PostgresRumourServiceTests
 
     private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock = new();
     private readonly HttpClient _httpClient;
+    private readonly Mock<ILogger<PostgresRumourService>> _loggerMock = new();
 
     public PostgresRumourServiceTests()
     {
@@ -29,7 +31,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_ShouldThrowExceptionForUnknownType()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -43,7 +45,7 @@ public class PostgresRumourServiceTests
     public async Task GetRumoursByOwnerAsync_ShouldReturnRumoursForOwner()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long ownerId = 1;
 
@@ -68,7 +70,7 @@ public class PostgresRumourServiceTests
     public async Task GetRumoursByOwnerAsync_WhenNoRumoursExist_ShouldReturnEmptyList()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long ownerId = 1;
 
@@ -82,7 +84,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithSuccessfulActivityApiCall_ShouldGenerateActivityRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -118,7 +120,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithFailedActivityApiCall_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -145,7 +147,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithSuccessfulAppearanceApiCall_ShouldGenerateAppearanceRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -181,7 +183,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithFailedAppearanceApiCall_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -208,7 +210,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNoEnvVar_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -227,7 +229,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithHttpException_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -250,7 +252,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithEmptyTasks_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -280,7 +282,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithEmptyAssets_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -310,7 +312,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithUnknownType_ShouldThrowRumourTypeNotFoundException()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -324,7 +326,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNoCharacterServiceUrl_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -343,7 +345,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithCharacterServiceHttpException_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -366,7 +368,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNullTaskApiResponse_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -394,7 +396,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNullAppearanceApiResponse_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -422,7 +424,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNullDataInTaskApi_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -452,7 +454,7 @@ public class PostgresRumourServiceTests
     public async Task CreateRumourAsync_WithNullDataInAppearanceApi_ShouldGenerateDefaultRumour()
     {
         await using var context = new RumoursDbContext(_dbContextOptions);
-        var service = new PostgresRumourService(context, _httpClient);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
         const string lobbyId = "test-lobby";
         const long gameId = 1;
         const long ownerId = 1;
@@ -476,5 +478,46 @@ public class PostgresRumourServiceTests
 
         Assert.NotNull(result);
         Assert.Equal($"Player {targetId} is trying to blend in, but their disguise is impeccable.", result.Text);
+    }
+    
+    [Fact]
+    public async Task CreateRumourAsync_WithEmptyAccessoriesList_ShouldGenerateRumour()
+    {
+        await using var context = new RumoursDbContext(_dbContextOptions);
+        var service = new PostgresRumourService(context, _httpClient, _loggerMock.Object);
+        const string lobbyId = "test-lobby";
+        const long gameId = 1;
+        const long ownerId = 1;
+        const long targetId = 2;
+        const string rumourType = "appearance";
+
+        var apiResponse = new ApiResponse<PlayerAssetsResponseDto>
+        {
+            Data = new PlayerAssetsResponseDto
+            {
+                Assets = new PlayerAssetsDto 
+                { 
+                    Shirt = 42,
+                    Accessories = []
+                } 
+            }
+        };
+        var json = JsonSerializer.Serialize(apiResponse);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", "http://localhost:8000");
+
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(httpResponse);
+
+        var result = await service.CreateRumourAsync(lobbyId, gameId, ownerId, targetId, rumourType);
+
+        Assert.NotNull(result);
+        Assert.Contains("shirt", result.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("accessories", result.Text, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -43,6 +43,20 @@ public class ServiceRegistryClientTests : IDisposable
         return new ServiceRegistryClient(_mockHttpClientFactory.Object, _mockLogger.Object);
     }
 
+    private async Task RegisterClientAsync(ServiceRegistryClient client)
+    {
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m => m.RequestUri!.ToString().Contains("register")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+        
+        await client.RegisterAsync();
+        _mockLogger.Invocations.Clear();
+    }
+
     [Fact]
     public void Constructor_UsesDefaults_WhenEnvVarsNotSet()
     {
@@ -62,6 +76,7 @@ public class ServiceRegistryClientTests : IDisposable
     public void Constructor_ReadsEnvVars_Correctly()
     {
         Environment.SetEnvironmentVariable("SERVICE_PORT", "8080");
+        var client = CreateClient();
 
         _mockLogger.Verify(
             log => log.Log(
@@ -195,17 +210,8 @@ public class ServiceRegistryClientTests : IDisposable
     {
         Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
         var client = CreateClient();
-
-        _mockHttpMessageHandler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(m => m.Method == HttpMethod.Post),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
-        await client.RegisterAsync();
-        Assert.NotNull(client.InstanceId);
-
+        await RegisterClientAsync(client);
+        
         _mockHttpMessageHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
@@ -227,6 +233,61 @@ public class ServiceRegistryClientTests : IDisposable
     }
 
     [Fact]
+    public async Task DeregisterAsync_Fails_WhenApiCallFails()
+    {
+        Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
+        var client = CreateClient();
+        await RegisterClientAsync(client);
+
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m => m.Method == HttpMethod.Delete),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.BadRequest));
+
+        await client.DeregisterAsync();
+
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to deregister service")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DeregisterAsync_Handles_Exception()
+    {
+        Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
+        var client = CreateClient();
+        await RegisterClientAsync(client);
+        var testException = new HttpRequestException("Network error");
+
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m => m.Method == HttpMethod.Delete),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ThrowsAsync(testException);
+
+        await client.DeregisterAsync();
+
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error occurred during service deregistration")),
+                testException,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task SendHeartbeatAsync_Skips_WhenNotRegistered()
     {
         Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
@@ -242,6 +303,42 @@ public class ServiceRegistryClientTests : IDisposable
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task SendHeartbeatAsync_Succeeds_WhenApiCallIsSuccessful()
+    {
+        Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
+        var client = CreateClient();
+        await RegisterClientAsync(client);
+
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m => m.RequestUri!.ToString().Contains("heartbeat")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+
+        await client.SendHeartbeatAsync();
+
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Debug,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Heartbeat sent successfully")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Attempting to re-register")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
     }
 
     [Fact]
@@ -304,5 +401,33 @@ public class ServiceRegistryClientTests : IDisposable
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task SendHeartbeatAsync_Handles_Exception()
+    {
+        Environment.SetEnvironmentVariable("DISCOVERY_SERVICE_URL", TestDiscoveryUrl);
+        var client = CreateClient();
+        await RegisterClientAsync(client);
+        var testException = new HttpRequestException("Network error");
+
+        _mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m => m.RequestUri!.ToString().Contains("heartbeat")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ThrowsAsync(testException);
+
+        await client.SendHeartbeatAsync();
+
+        _mockLogger.Verify(
+            log => log.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error occurred while sending heartbeat")),
+                testException,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 }
