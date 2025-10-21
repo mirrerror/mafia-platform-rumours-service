@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MafiaRumoursService.Data;
 using MafiaRumoursService.Middleware;
 using MafiaRumoursService.Services;
+using Prometheus;
 using Serilog;
 
 Env.Load(options: LoadOptions.TraversePath());
@@ -64,6 +65,9 @@ builder.Services.AddDbContext<RumoursDbContext>(options =>
 
 builder.Services.AddScoped<IRumourService, PostgresRumourService>();
 
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString ?? throw new InvalidOperationException("Connection string 'DB_CONNECTION_STRING' not found."));
+
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -105,9 +109,14 @@ app.Lifetime.ApplicationStopping.Register(async void () =>
 app.UseCors("CorsPolicy");
 app.UseRouting();
 
+app.UseMetricServer();
+app.UseHttpMetrics();
+
 app.UseMiddleware<RequestThrottlingMiddleware>();
 
 app.MapControllers();
+
+app.MapHealthChecks("/healthz");
 
 try
 {
