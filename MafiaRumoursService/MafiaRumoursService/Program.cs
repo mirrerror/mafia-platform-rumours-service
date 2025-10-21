@@ -4,10 +4,25 @@ using Microsoft.EntityFrameworkCore;
 using MafiaRumoursService.Data;
 using MafiaRumoursService.Middleware;
 using MafiaRumoursService.Services;
+using Serilog;
 
 Env.Load(options: LoadOptions.TraversePath());
 
+var logPath = Environment.GetEnvironmentVariable("LOG_FILE_PATH") ?? "logs/rumours-service.log";
+
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(logPath,
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        shared: true,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var maxConcurrentRequestsStr = Environment.GetEnvironmentVariable("MAX_CONCURRENT_REQUESTS") ?? "100";
 if (!int.TryParse(maxConcurrentRequestsStr, out var maxConcurrentRequests))
@@ -52,6 +67,9 @@ builder.Services.AddScoped<IRumourService, PostgresRumourService>();
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
+var registryClient = app.Services.GetRequiredService<ServiceRegistryClient>();
+
+app.UseSerilogRequestLogging();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -61,16 +79,16 @@ using (var scope = app.Services.CreateScope())
         var dbContext = services.GetRequiredService<RumoursDbContext>();
         if (dbContext.Database.IsRelational())
         {
+            logger.LogInformation("Attempting to migrate 'Rumours' database...");
             await dbContext.Database.MigrateAsync();
+            logger.LogInformation("'Rumours' database migration completed successfully.");
         }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while migrating the 'Rumours' database.");
     }
 }
-
-var registryClient = app.Services.GetRequiredService<ServiceRegistryClient>();
 
 app.Lifetime.ApplicationStarted.Register(async void () =>
 {
@@ -90,5 +108,19 @@ app.UseRouting();
 app.UseMiddleware<RequestThrottlingMiddleware>();
 
 app.MapControllers();
+
+try
+{
+    var logDir = Path.GetDirectoryName(logPath);
+    if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+    {
+        logger.LogInformation("Creating log directory at: {LogDir}", logDir);
+        Directory.CreateDirectory(logDir);
+    }
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "Failed to create log directory at: {LogPath}", logPath);
+}
 
 app.Run();
