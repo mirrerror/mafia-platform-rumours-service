@@ -5,7 +5,11 @@
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <Exclude>[*]Migrations/*,[*]Models/*,[*]Data/*Snapshot.cs,[*]Program.cs</Exclude>
+          
+          <Exclude>[*]Program</Exclude>
+          <Exclude>[*].Models.*</Exclude>
+          <Exclude>[*].Migrations.*</Exclude>
+
         </Configuration>
       </DataCollector>
     </DataCollectors>
