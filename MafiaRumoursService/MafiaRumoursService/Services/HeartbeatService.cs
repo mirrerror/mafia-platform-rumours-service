@@ -9,20 +9,40 @@ public class HeartbeatService(ServiceRegistryClient registryClient, ILogger<Hear
     {
         logger.LogInformation("Heartbeat service starting.");
 
-        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("Heartbeat service stopped during initial delay.");
+            return;
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 await registryClient.SendHeartbeatAsync();
+                await Task.Delay(_heartbeatInterval, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "An unhandled error occurred in the heartbeat service loop.");
+                
+                try
+                {
+                    await Task.Delay(_heartbeatInterval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
-
-            await Task.Delay(_heartbeatInterval, stoppingToken);
         }
 
         logger.LogInformation("Heartbeat service stopping.");

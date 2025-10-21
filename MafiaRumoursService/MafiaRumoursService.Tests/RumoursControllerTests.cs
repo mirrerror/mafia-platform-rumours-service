@@ -5,6 +5,7 @@ using MafiaRumoursService.Exceptions;
 using MafiaRumoursService.Models;
 using MafiaRumoursService.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 
@@ -14,13 +15,15 @@ public class RumoursControllerTests
 {
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
     private readonly Mock<IRumourService> _rumourServiceMock;
+    private readonly Mock<ILogger<RumoursController>> _loggerMock;
     private readonly RumoursController _controller;
 
     public RumoursControllerTests()
     {
         _httpClientFactoryMock = new Mock<IHttpClientFactory>();
         _rumourServiceMock = new Mock<IRumourService>();
-        _controller = new RumoursController(_httpClientFactoryMock.Object, _rumourServiceMock.Object);
+        _loggerMock = new Mock<ILogger<RumoursController>>();
+        _controller = new RumoursController(_httpClientFactoryMock.Object, _rumourServiceMock.Object, _loggerMock.Object);
 
         Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
     }
