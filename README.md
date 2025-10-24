@@ -150,7 +150,7 @@ docker rm mafia-rumours-service
 From the solution root, run:
 
 ```bash
-dotnet test
+dotnet test --settings coverlet.runsettings
 ```
 
 ---
@@ -250,6 +250,39 @@ All request and response bodies are in **JSON** format.
       }
     ]
   }
+}
+```
+
+
+---
+
+### Donwload logs
+
+**Endpoint:** `GET /logs/download`
+
+**Description:** Download the latest logs.
+**Content-Type:** application/octet-stream
+
+**Success Response (200):**
+```json
+[2025-10-24 18:40:01 INF] Service started.
+[2025-10-24 18:42:10 INF] Attempting to download log file from logs/rumours-service.log
+```
+
+
+---
+
+### Get service health status
+
+**Endpoint** `GET /actuator/health`
+
+**Descpription:** Check the service health status.
+
+**Success Response (200):**
+```json
+{
+  "status": "UP",
+  "timestamp": "2025-10-24T15:45:00.1234567Z"
 }
 ```
 
