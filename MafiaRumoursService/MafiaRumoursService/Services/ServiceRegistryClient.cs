@@ -61,12 +61,20 @@ public class ServiceRegistryClient
         }
 
         InstanceId = Guid.NewGuid().ToString();
+        
+        var requestMetadata = new Dictionary<string, string>
+        {
+            { "metricsPath", "/metrics" },
+            { "loadMetricName", "system_runtime_cpu_usage" }
+        };
+
         var payload = new
         {
             serviceId = _serviceId,
             instanceId = InstanceId,
             host = _serviceHost,
-            port = _servicePort
+            port = _servicePort,
+            metadata = requestMetadata
         };
 
         try
