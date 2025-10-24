@@ -119,36 +119,4 @@ public class ServiceRegistryClient
             _logger.LogError(ex, "Error occurred during service deregistration.");
         }
     }
-
-    public virtual async Task SendHeartbeatAsync()
-    {
-        if (string.IsNullOrEmpty(InstanceId) || string.IsNullOrEmpty(_discoveryUrl))
-        {
-            _logger.LogWarning("Skipping heartbeat. Service not registered or discovery URL not set.");
-            return;
-        }
-
-        try
-        {
-            var httpClient = _httpClientFactory.CreateClient();
-            var response = await httpClient.PostAsync($"{_discoveryUrl}/api/discovery/heartbeat/{InstanceId}", null);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogDebug("Heartbeat sent successfully.");
-            }
-            else
-            {
-                _logger.LogWarning("Heartbeat failed. Status code: {ResponseStatusCode}. Attempting to re-register...", response.StatusCode);
-                InstanceId = null;
-                await RegisterAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred while sending heartbeat.");
-            InstanceId = null;
-            await RegisterAsync();
-        }
-    }
 }
