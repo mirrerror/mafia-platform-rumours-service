@@ -44,7 +44,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<ServiceRegistryClient>();
-builder.Services.AddHostedService<HeartbeatService>();
 
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
