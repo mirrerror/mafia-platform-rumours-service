@@ -1,0 +1,45 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "MafiaRumoursService.Protos";
+
+package com.pad.lab.grpc.subscriber;
+
+service MessageSubscriber {
+  rpc ReceiveMessage(MessageRequest) returns (MessageResponse);
+  rpc Prepare(PrepareRequest) returns (PrepareResponse);
+  rpc Commit(CommitRequest) returns (CommitResponse);
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+}
+
+message MessageRequest {
+  string payload = 1;
+}
+
+message MessageResponse {
+  bool acknowledged = 1;
+}
+
+message PrepareRequest {
+  string transaction_id = 1;
+  string payload = 2;
+}
+
+message PrepareResponse {
+  bool vote_commit = 1;
+}
+
+message CommitRequest {
+  string transaction_id = 1;
+}
+
+message CommitResponse {
+  bool acknowledged = 1;
+}
+
+message RollbackRequest {
+  string transaction_id = 1;
+}
+
+message RollbackResponse {
+  bool acknowledged = 1;
+}
