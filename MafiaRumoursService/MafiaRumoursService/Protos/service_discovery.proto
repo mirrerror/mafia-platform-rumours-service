@@ -1,0 +1,33 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "MafiaRumoursService.Protos";
+
+package com.pad.lab.servicediscovery.grpc;
+
+service RegistrationService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+}
+
+message RegisterRequest {
+  string service_id = 1;
+  string host = 2;
+  int32 rest_port = 3;
+  int32 rpc_port = 4;
+  string topic_name = 5;
+}
+
+message RegisterResponse {
+  string status = 1;
+  string instance_id = 2;
+  string service_id = 3;
+}
+
+message DeregisterRequest {
+  string instance_id = 1;
+}
+
+message DeregisterResponse {
+  string status = 1;
+  string instance_id = 2;
+}
