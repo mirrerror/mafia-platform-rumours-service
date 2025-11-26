@@ -9,6 +9,8 @@
           <Exclude>[*]Program</Exclude>
           <Exclude>[*].Models.*</Exclude>
           <Exclude>[*].Migrations.*</Exclude>
+          
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
 
         </Configuration>
       </DataCollector>

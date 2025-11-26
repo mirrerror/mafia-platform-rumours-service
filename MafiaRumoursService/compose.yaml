@@ -18,6 +18,7 @@ services:
     container_name: mafia-rumours-service-app
     ports:
       - "8080:8080" # Expose the app's main port
+      - "6000:6000"
     env_file:
       - .env # Load environment variables from the .env file
     depends_on:
