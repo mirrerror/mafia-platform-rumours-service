@@ -1,3 +1,4 @@
+using Grpc.Core;
 using MafiaRumoursService.Protos;
 using System.Net;
 
@@ -13,6 +14,7 @@ public class ServiceRegistryClient
     private readonly int _restPort;
     private readonly int _rpcPort;
     private readonly string _interestedTopic;
+    private readonly string _subscribedTopics;
 
     public string? InstanceId { get; private set; }
 
@@ -22,7 +24,8 @@ public class ServiceRegistryClient
         _grpcClient = serviceProvider.GetService<RegistrationService.RegistrationServiceClient>();
 
         _serviceId = Environment.GetEnvironmentVariable("SERVICE_ID") ?? "mafia-rumours-service";
-        _interestedTopic = Environment.GetEnvironmentVariable("SERVICE_TOPIC") ?? "rumours.events";
+        _interestedTopic = Environment.GetEnvironmentVariable("SERVICE_TOPIC") ?? "rumours-topic";
+        _subscribedTopics = Environment.GetEnvironmentVariable("SUBSCRIBED_TOPICS") ?? "rumours-events";
 
         _serviceHost = "localhost";
         var hostnameFromEnv = Environment.GetEnvironmentVariable("HOSTNAME");
@@ -49,6 +52,8 @@ public class ServiceRegistryClient
 
         var rpcPortStr = Environment.GetEnvironmentVariable("RPC_PORT");
         if (!int.TryParse(rpcPortStr, out _rpcPort)) _rpcPort = 6000;
+        
+        _logger.LogInformation("ServiceRegistryClient initialized. ServiceId: {Id}", _serviceId);
     }
 
     public virtual async Task RegisterAsync()
@@ -70,11 +75,23 @@ public class ServiceRegistryClient
                 TopicName = _interestedTopic
             };
 
-            _logger.LogInformation("Sending gRPC Registration...");
+            request.Metadata.Add("language", "csharp");
+
+            if (!string.IsNullOrEmpty(_subscribedTopics))
+            {
+                request.Metadata.Add("subscribedTopics", _subscribedTopics);
+            }
+
+            _logger.LogInformation("Sending gRPC Registration with metadata (Topics: {Topics})...", _subscribedTopics);
             var response = await _grpcClient.RegisterAsync(request);
 
             InstanceId = response.InstanceId;
             _logger.LogInformation("Service registered with discovery. Instance ID: {InstanceId}", InstanceId);
+        }
+        catch (RpcException ex)
+        {
+            InstanceId = null;
+            _logger.LogError(ex, "gRPC Error during service registration: {Status}", ex.Status);
         }
         catch (Exception ex)
         {

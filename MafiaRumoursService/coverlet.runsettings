@@ -9,6 +9,7 @@
           <Exclude>[*]Program</Exclude>
           <Exclude>[*].Models.*</Exclude>
           <Exclude>[*].Migrations.*</Exclude>
+          <Exclude>[MafiaRumoursService]MafiaRumoursService.Protos.*</Exclude>
           
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
 

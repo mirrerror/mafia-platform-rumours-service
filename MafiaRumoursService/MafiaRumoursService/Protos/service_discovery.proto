@@ -15,6 +15,7 @@ message RegisterRequest {
   int32 rest_port = 3;
   int32 rpc_port = 4;
   string topic_name = 5;
+  map<string, string> metadata = 6;
 }
 
 message RegisterResponse {
