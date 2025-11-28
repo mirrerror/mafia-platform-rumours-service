@@ -239,6 +239,35 @@ public class RumoursControllerTests
         
         Environment.SetEnvironmentVariable("GATEWAY_SERVICE_URL", null);
     }
+
+    [Fact]
+    public async Task PurchaseRumour_WhenServiceThrowsGenericException_ShouldReturn500()
+    {
+        const string lobbyId = "test-lobby";
+        var purchaseRumourDto = new PurchaseRumourDto { GameId = 1, SenderId = 1, TargetId = 2, RumourType = "role" };
+
+        var httpMessageHandlerMock = new Mock<HttpMessageHandler>();
+        httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
+
+        var httpClient = new HttpClient(httpMessageHandlerMock.Object);
+        _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        _rumourServiceMock.Setup(s => s.CreateRumourAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<string>()))
+            .ThrowsAsync(new Exception("Database connection failed"));
+
+        var result = await _controller.PurchaseRumour(lobbyId, purchaseRumourDto);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, objectResult.StatusCode);
+        AssertErrorResponse(objectResult.Value, "SERVER_ERROR", "An unexpected error occurred.");
+    }
     
     private static void AssertErrorResponse(object? value, string expectedCode, string expectedMessage)
     {

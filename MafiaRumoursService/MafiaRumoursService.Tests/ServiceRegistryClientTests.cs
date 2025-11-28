@@ -38,6 +38,7 @@ public class ServiceRegistryClientTests : IDisposable
         Environment.SetEnvironmentVariable("HOSTNAME", null);
         Environment.SetEnvironmentVariable("SERVICE_PORT", null);
         Environment.SetEnvironmentVariable("RPC_PORT", null);
+        Environment.SetEnvironmentVariable("SUBSCRIBED_TOPICS", null);
     }
 
     private ServiceRegistryClient CreateClient()
@@ -99,6 +100,30 @@ public class ServiceRegistryClientTests : IDisposable
     }
 
     [Fact]
+    public async Task RegisterAsync_SendsCorrectMetadata()
+    {
+        Environment.SetEnvironmentVariable("SUBSCRIBED_TOPICS", "rumours-events");
+        var client = CreateClient();
+
+        var registerResponse = new RegisterResponse { InstanceId = "id", Status = "OK" };
+        var mockCall = CreateAsyncUnaryCall(registerResponse);
+
+        _mockGrpcClient
+            .Setup(x => x.RegisterAsync(It.IsAny<RegisterRequest>(), null, null, CancellationToken.None))
+            .Returns(mockCall)
+            .Verifiable();
+
+        await client.RegisterAsync();
+
+        _mockGrpcClient.Verify(x => x.RegisterAsync(It.Is<RegisterRequest>(req => 
+            req.Metadata.ContainsKey("language") && 
+            req.Metadata["language"] == "csharp" &&
+            req.Metadata.ContainsKey("subscribedTopics") && 
+            req.Metadata["subscribedTopics"] == "rumours-events"
+        ), null, null, CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
     public async Task RegisterAsync_Handles_RpcException()
     {
         var client = CreateClient();
@@ -115,7 +140,7 @@ public class ServiceRegistryClientTests : IDisposable
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error occurred during service registration")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("gRPC Error during service registration")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -146,6 +171,22 @@ public class ServiceRegistryClientTests : IDisposable
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    [Fact]
+    public void Constructor_WhenHostnameEnvVarMissing_ShouldNotThrow()
+    {
+        Environment.SetEnvironmentVariable("HOSTNAME", null);
+        var client = CreateClient();
+        Assert.NotNull(client); 
+    }
+
+    [Fact]
+    public async Task DeregisterAsync_WhenInstanceIdIsNull_ShouldReturnImmediately()
+    {
+        var client = CreateClient();
+        await client.DeregisterAsync();
+        _mockGrpcClient.Verify(x => x.DeregisterAsync(It.IsAny<DeregisterRequest>(), null, null, CancellationToken.None), Times.Never);
     }
 
     private static AsyncUnaryCall<T> CreateAsyncUnaryCall<T>(T response)
