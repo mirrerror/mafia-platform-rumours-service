@@ -11,8 +11,6 @@ public class PostgresRumourService(
     ILogger<PostgresRumourService> logger
 ) : IRumourService
 {
-    private static readonly Random Random = new();
-
     public async Task<Rumour> CreateRumourAsync(string lobbyId, long gameId, long ownerId, long targetId, string type)
     {
         logger.LogInformation(
@@ -133,7 +131,7 @@ public class PostgresRumourService(
 
     private string GenerateActivityRumour(long targetId, List<TaskDto> tasks)
     {
-        var task = tasks[Random.Next(tasks.Count)];
+        var task = tasks[Random.Shared.Next(tasks.Count)];
         logger.LogDebug("Generating 'activity' rumour text using Task: {TaskName} at {Location}", task.Name, task.Location);
 
         string[] templates = [
@@ -142,7 +140,7 @@ public class PostgresRumourService(
             $"I wouldn't trust player {targetId}. They were lurking around the {task.Location} all day."
         ];
 
-        return templates[Random.Next(templates.Length)];
+        return templates[Random.Shared.Next(templates.Length)];
     }
 
     private string GenerateAppearanceRumour(long targetId, PlayerAssetsDto assets)
@@ -156,7 +154,7 @@ public class PostgresRumourService(
 
         if (assets.Accessories?.Count > 0)
         {
-            assetList.Add(new KeyValuePair<string, long?>("accessory", assets.Accessories[Random.Next(assets.Accessories.Count)]));
+            assetList.Add(new KeyValuePair<string, long?>("accessory", assets.Accessories[Random.Shared.Next(assets.Accessories.Count)]));
         }
 
         if (assetList.Count == 0)
@@ -165,15 +163,15 @@ public class PostgresRumourService(
              return $"Player {targetId} has a very plain appearance, almost too plain if you ask me.";
         }
         
-        var (slot, assetId) = assetList[Random.Next(assetList.Count)];
+        var (slot, assetId) = assetList[Random.Shared.Next(assetList.Count)];
         logger.LogDebug("Generating 'appearance' rumour text using AssetSlot: {Slot}, AssetId: {AssetId}", slot, assetId);
 
         string[] templates = [
             $"Did you see the odd {slot} player {targetId} was wearing? It had ID {assetId}. Very suspicious.",
             $"Player {targetId}'s choice of {slot} (ID: {assetId}) is... interesting. Makes you wonder.",
-            $"I'm not saying anything, but player {targetId}'s {slot} looks just like the one the culprit was described wearing."
+            $"I'm not saying anything, but player {targetId}'s {slot} (ID: {assetId}) looks just like the one the culprit was described wearing."
         ];
 
-        return templates[Random.Next(templates.Length)];
+        return templates[Random.Shared.Next(templates.Length)];
     }
 }

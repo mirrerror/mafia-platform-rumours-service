@@ -5,13 +5,14 @@ using MafiaRumoursService.Protos;
 
 namespace MafiaRumoursService.Services;
 
-public class CreateRumourDto
+public class RumourTransactionDto
 {
-    public string LobbyId { get; set; } = null!;
+    public string? Action { get; set; }
+    public string? LobbyId { get; set; }
     public long GameId { get; set; }
     public long OwnerId { get; set; }
     public long TargetId { get; set; }
-    public string Type { get; set; } = null!;
+    public string? Type { get; set; }
 }
 
 public class GrpcSubscriberService(
@@ -23,94 +24,78 @@ public class GrpcSubscriberService(
 
     public override Task<MessageResponse> ReceiveMessage(MessageRequest request, ServerCallContext context)
     {
-        logger.LogInformation("Received gRPC Message: {Payload}", request.Payload);
         return Task.FromResult(new MessageResponse { Acknowledged = true });
     }
 
     public override Task<PrepareResponse> Prepare(PrepareRequest request, ServerCallContext context)
     {
-        logger.LogInformation("2PC Prepare Phase for Tx {TxId}.", request.TransactionId);
+        logger.LogInformation("2PC [Phase 1: Prepare] Tx: {TxId}", request.TransactionId);
 
         if (string.IsNullOrWhiteSpace(request.Payload))
-        {
-            logger.LogWarning("Tx {TxId} rejected: Empty payload", request.TransactionId);
             return Task.FromResult(new PrepareResponse { VoteCommit = false });
-        }
 
-        var canCommit = false;
+        var voteYes = false;
 
         try
         {
-            if (request.Payload.StartsWith("CreateRumour:"))
-            {
-                var jsonPart = request.Payload["CreateRumour:".Length..];
-                var dto = JsonSerializer.Deserialize<CreateRumourDto>(jsonPart, JsonOptions);
+            var dto = JsonSerializer.Deserialize<RumourTransactionDto>(request.Payload, JsonOptions);
 
-                if (dto != null && !string.IsNullOrEmpty(dto.LobbyId) && !string.IsNullOrEmpty(dto.Type))
+            if (dto != null && !string.IsNullOrEmpty(dto.LobbyId) && !string.IsNullOrEmpty(dto.Type))
+            {
+                if (dto.Type.Equals("activity", StringComparison.OrdinalIgnoreCase) || 
+                    dto.Type.Equals("appearance", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (dto.Type.Equals("activity", StringComparison.OrdinalIgnoreCase) || 
-                        dto.Type.Equals("appearance", StringComparison.OrdinalIgnoreCase))
-                    {
-                        canCommit = true;
-                    }
-                    else
-                    {
-                        logger.LogWarning("Tx {TxId} rejected: Invalid rumour type '{Type}'", request.TransactionId, dto.Type);
-                    }
+                    logger.LogInformation("Tx {TxId}: Rumour Data Valid. Voting YES.", request.TransactionId);
+                    voteYes = true;
                 }
                 else
                 {
-                    logger.LogWarning("Tx {TxId} rejected: Invalid JSON or missing required fields", request.TransactionId);
+                    logger.LogWarning("Tx {TxId}: Invalid Rumour Type '{Type}'. Voting NO.", request.TransactionId, dto.Type);
                 }
             }
             else
             {
-                canCommit = true;
+                logger.LogWarning("Tx {TxId}: Payload missing LobbyId/Type. Voting NO.", request.TransactionId);
+                voteYes = false; 
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error during Prepare phase for Tx {TxId}", request.TransactionId);
-            canCommit = false;
+            logger.LogError(ex, "Tx {TxId}: Deserialization failed.", request.TransactionId);
+            voteYes = false;
         }
 
-        if (canCommit)
+        if (voteYes)
         {
             PendingTransactions[request.TransactionId] = request.Payload;
         }
 
-        return Task.FromResult(new PrepareResponse { VoteCommit = canCommit });
+        return Task.FromResult(new PrepareResponse { VoteCommit = voteYes });
     }
 
     public override async Task<CommitResponse> Commit(CommitRequest request, ServerCallContext context)
     {
-        logger.LogInformation("2PC Commit Phase for Tx {TxId}", request.TransactionId);
+        logger.LogInformation("2PC [Phase 2: Commit] Tx: {TxId}", request.TransactionId);
 
         if (PendingTransactions.TryRemove(request.TransactionId, out var payload))
         {
             try
             {
-                if (payload.StartsWith("CreateRumour:"))
+                var dto = JsonSerializer.Deserialize<RumourTransactionDto>(payload, JsonOptions);
+                if (dto != null)
                 {
-                    var jsonPart = payload["CreateRumour:".Length..];
-                    var dto = JsonSerializer.Deserialize<CreateRumourDto>(jsonPart, JsonOptions);
-
-                    if (dto != null)
-                    {
-                        logger.LogInformation("Executing Commit: Creating Rumour for Lobby {LobbyId}", dto.LobbyId);
-                        await rumourService.CreateRumourAsync(dto.LobbyId, dto.GameId, dto.OwnerId, dto.TargetId, dto.Type);
-                        logger.LogInformation("Successfully committed Tx {TxId}: Created Rumour", request.TransactionId);
-                    }
+                    await rumourService.CreateRumourAsync(dto.LobbyId!, dto.GameId, dto.OwnerId, dto.TargetId, dto.Type!);
+                    logger.LogInformation("Tx {TxId}: Rumour successfully created in DB.", request.TransactionId);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to execute Commit for Tx {TxId}", request.TransactionId);
+                logger.LogError(ex, "Tx {TxId}: Failed to execute Commit logic.", request.TransactionId);
             }
         }
         else
         {
-            logger.LogWarning("Received Commit for unknown or already processed Tx {TxId}", request.TransactionId);
+            logger.LogWarning("Tx {TxId}: Commit received but no pending data found (already committed or timeout).", request.TransactionId);
         }
 
         return new CommitResponse { Acknowledged = true };
@@ -118,17 +103,13 @@ public class GrpcSubscriberService(
 
     public override Task<RollbackResponse> Rollback(RollbackRequest request, ServerCallContext context)
     {
-        logger.LogInformation("2PC Rollback Phase for Tx {TxId}", request.TransactionId);
-
+        logger.LogInformation("2PC [Phase 2: Rollback] Tx: {TxId}", request.TransactionId);
+        
         if (PendingTransactions.TryRemove(request.TransactionId, out _))
         {
-            logger.LogInformation("Rolled back Tx {TxId}. Discarded payload.", request.TransactionId);
+            logger.LogInformation("Tx {TxId}: Rolled back. Pending data discarded.", request.TransactionId);
         }
-        else
-        {
-            logger.LogWarning("Received Rollback for unknown Tx {TxId}", request.TransactionId);
-        }
-
+        
         return Task.FromResult(new RollbackResponse { Acknowledged = true });
     }
 }

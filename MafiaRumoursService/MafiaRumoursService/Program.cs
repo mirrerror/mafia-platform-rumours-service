@@ -69,6 +69,21 @@ if (!string.IsNullOrEmpty(discoveryUrl))
     });
 }
 
+var messageBrokerUrl = Environment.GetEnvironmentVariable("MESSAGE_BROKER_GRPC_URL") ?? "http://message-broker:6565";
+builder.Services.AddGrpcClient<MessageBrokerService.MessageBrokerServiceClient>(o =>
+{
+    o.Address = new Uri(messageBrokerUrl);
+})
+.ConfigureChannel(o =>
+{
+    o.HttpHandler = new SocketsHttpHandler
+    {
+        EnableMultipleHttp2Connections = true,
+        KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+        KeepAlivePingTimeout = TimeSpan.FromSeconds(30)
+    };
+});
+
 builder.Services.AddSingleton<ServiceRegistryClient>();
 
 builder.Services.AddControllers()

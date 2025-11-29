@@ -1,0 +1,40 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "MafiaRumoursService.Protos";
+
+package com.pad.lab.messagebroker.grpc;
+
+service MessageBrokerService {
+  rpc PublishMessage(PublishRequest) returns (PublishResponse);
+  rpc GetTopics(GetTopicsRequest) returns (GetTopicsResponse);
+  rpc GetDeadLetterMessages(GetDeadLetterMessagesRequest) returns (GetDeadLetterMessagesResponse);
+}
+
+message PublishRequest {
+  string topic_name = 1;
+  string payload = 2;
+}
+
+message PublishResponse {
+  string message_id = 1;
+}
+
+message GetTopicsRequest {}
+
+message GetTopicsResponse {
+  repeated string topics = 1;
+}
+
+message DeadLetterMessage {
+  string id = 1;
+  string topic_name = 2;
+  string payload = 3;
+  string status = 4;
+  string timestamp = 5;
+}
+
+message GetDeadLetterMessagesRequest {}
+
+message GetDeadLetterMessagesResponse {
+  repeated DeadLetterMessage messages = 1;
+}
