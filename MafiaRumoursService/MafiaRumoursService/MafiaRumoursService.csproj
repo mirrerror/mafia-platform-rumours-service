@@ -42,6 +42,7 @@
 
     <ItemGroup>
         <Protobuf Include="Protos\service_discovery.proto" GrpcServices="Client" />
+        <Protobuf Include="Protos\message_broker.proto" GrpcServices="Client" />
         <Protobuf Include="Protos\message_subscriber.proto" GrpcServices="Server" />
     </ItemGroup>
 

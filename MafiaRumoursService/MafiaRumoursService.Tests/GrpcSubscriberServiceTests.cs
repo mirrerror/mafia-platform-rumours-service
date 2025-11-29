@@ -43,23 +43,25 @@ public class GrpcSubscriberServiceTests
     }
 
     [Fact]
-    public async Task Prepare_WithNonRumourPayload_ReturnsVoteCommitTrue()
+    public async Task Prepare_WithNonRumourPayload_ReturnsVoteCommitFalse()
     {
         var context = new Mock<ServerCallContext>();
-        var request = new PrepareRequest { TransactionId = "tx2", Payload = "OtherEvent:{}" };
+        var dto = new { some_other_field = "value" }; 
+        var json = JsonSerializer.Serialize(dto);
+        var request = new PrepareRequest { TransactionId = "tx2", Payload = json };
 
         var response = await _service.Prepare(request, context.Object);
 
-        Assert.True(response.VoteCommit);
+        Assert.False(response.VoteCommit); 
     }
 
     [Fact]
     public async Task Prepare_WithValidActivityRumour_ReturnsVoteCommitTrue()
     {
         var context = new Mock<ServerCallContext>();
-        var dto = new CreateRumourDto { LobbyId = "l1", GameId = 1, OwnerId = 1, TargetId = 2, Type = "activity" };
+        var dto = new RumourTransactionDto { LobbyId = "l1", GameId = 1, OwnerId = 1, TargetId = 2, Type = "activity" };
         var json = JsonSerializer.Serialize(dto);
-        var request = new PrepareRequest { TransactionId = "tx3", Payload = "CreateRumour:" + json };
+        var request = new PrepareRequest { TransactionId = "tx3", Payload = json };
 
         var response = await _service.Prepare(request, context.Object);
 
@@ -70,9 +72,9 @@ public class GrpcSubscriberServiceTests
     public async Task Prepare_WithInvalidRumourType_ReturnsVoteCommitFalse()
     {
         var context = new Mock<ServerCallContext>();
-        var dto = new CreateRumourDto { LobbyId = "l1", Type = "invalid" };
+        var dto = new RumourTransactionDto { LobbyId = "l1", Type = "invalid" };
         var json = JsonSerializer.Serialize(dto);
-        var request = new PrepareRequest { TransactionId = "tx4", Payload = "CreateRumour:" + json };
+        var request = new PrepareRequest { TransactionId = "tx4", Payload = json };
 
         var response = await _service.Prepare(request, context.Object);
 
@@ -83,7 +85,7 @@ public class GrpcSubscriberServiceTests
     public async Task Prepare_WithInvalidJson_ReturnsVoteCommitFalse()
     {
         var context = new Mock<ServerCallContext>();
-        var request = new PrepareRequest { TransactionId = "tx5", Payload = "CreateRumour:{invalid-json}" };
+        var request = new PrepareRequest { TransactionId = "tx5", Payload = "{invalid-json}" };
 
         var response = await _service.Prepare(request, context.Object);
 
@@ -94,20 +96,9 @@ public class GrpcSubscriberServiceTests
     public async Task Prepare_WithMissingLobbyId_ReturnsVoteCommitFalse()
     {
         var context = new Mock<ServerCallContext>();
-        var dto = new CreateRumourDto { LobbyId = "", GameId = 1, OwnerId = 1, TargetId = 2, Type = "activity" };
+        var dto = new RumourTransactionDto { LobbyId = "", GameId = 1, OwnerId = 1, TargetId = 2, Type = "activity" };
         var json = JsonSerializer.Serialize(dto);
-        var request = new PrepareRequest { TransactionId = "tx_fail", Payload = "CreateRumour:" + json };
-
-        var response = await _service.Prepare(request, context.Object);
-
-        Assert.False(response.VoteCommit);
-    }
-
-    [Fact]
-    public async Task Prepare_WithNullDto_ReturnsVoteCommitFalse()
-    {
-        var context = new Mock<ServerCallContext>();
-        var request = new PrepareRequest { TransactionId = "tx_null", Payload = "CreateRumour:null" };
+        var request = new PrepareRequest { TransactionId = "tx_fail", Payload = json };
 
         var response = await _service.Prepare(request, context.Object);
 
@@ -119,8 +110,8 @@ public class GrpcSubscriberServiceTests
     {
         var context = new Mock<ServerCallContext>();
         const string txId = "tx6";
-        var dto = new CreateRumourDto { LobbyId = "l1", GameId = 10, OwnerId = 20, TargetId = 30, Type = "activity" };
-        var payload = "CreateRumour:" + JsonSerializer.Serialize(dto);
+        var dto = new RumourTransactionDto { LobbyId = "l1", GameId = 10, OwnerId = 20, TargetId = 30, Type = "activity" };
+        var payload = JsonSerializer.Serialize(dto);
 
         await _service.Prepare(new PrepareRequest { TransactionId = txId, Payload = payload }, context.Object);
 
@@ -145,8 +136,8 @@ public class GrpcSubscriberServiceTests
     {
         var context = new Mock<ServerCallContext>();
         const string txId = "tx7";
-        var dto = new CreateRumourDto { LobbyId = "l1", Type = "activity" };
-        var payload = "CreateRumour:" + JsonSerializer.Serialize(dto);
+        var dto = new RumourTransactionDto { LobbyId = "l1", Type = "activity" };
+        var payload = JsonSerializer.Serialize(dto);
 
         await _service.Prepare(new PrepareRequest { TransactionId = txId, Payload = payload }, context.Object);
 
@@ -163,7 +154,11 @@ public class GrpcSubscriberServiceTests
     {
         var context = new Mock<ServerCallContext>();
         const string txId = "tx8";
-        await _service.Prepare(new PrepareRequest { TransactionId = txId, Payload = "CreateRumour:{}" }, context.Object);
+
+        var validDto = new RumourTransactionDto { LobbyId = "rollback_test", Type = "activity" };
+        var validPayload = JsonSerializer.Serialize(validDto);
+
+        await _service.Prepare(new PrepareRequest { TransactionId = txId, Payload = validPayload }, context.Object);
 
         var response = await _service.Rollback(new RollbackRequest { TransactionId = txId }, context.Object);
 

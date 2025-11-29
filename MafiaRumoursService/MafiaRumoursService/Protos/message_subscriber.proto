@@ -2,7 +2,7 @@
 
 option csharp_namespace = "MafiaRumoursService.Protos";
 
-package com.pad.lab.grpc.subscriber;
+package com.pad.lab.grpc;
 
 service MessageSubscriber {
   rpc ReceiveMessage(MessageRequest) returns (MessageResponse);
