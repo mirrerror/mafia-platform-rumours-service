@@ -98,7 +98,15 @@ builder.Services.AddControllers()
     });
 
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-builder.Services.AddDbContext<RumoursDbContext>(options => options.UseNpgsql(connectionString));
+
+builder.Services.AddDbContext<RumoursDbContext>(options => 
+    options.UseNpgsql(connectionString, npgsqlOptions => 
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5, 
+            maxRetryDelay: TimeSpan.FromSeconds(2), 
+            errorCodesToAdd: null);
+    }));
 
 builder.Services.AddScoped<IRumourService, PostgresRumourService>();
 
